@@ -1,0 +1,64 @@
+[project]
+name = "e2e-tests"
+version = "0.1.0"
+description = "Pilot-HDC end-to-end tests."
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "pydantic==2.11.7",
+    "pytest==8.4.1",
+    "pytest-playwright==0.7.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E", "W", # pycodestyle
+    "F", # pyflakes
+    "C90", # mccabe
+    "I", # isort
+    "UP", # pyupgrade
+    "B", # flake8-bugbear
+    "A", # flake8-builtins
+    "C4", # flake8-comprehensions
+    "DTZ", # flake8-datetimez
+    "TID", # flake8-tidy-imports
+    "T10", # flake8-debugger
+    "LOG", # flake8-logging
+    "T20", # flake8-print
+    "ICN", # flake8-import-conventions
+]
+pycodestyle = { max-doc-length = 120, max-line-length = 120 }
+mccabe = { max-complexity = 10 }
+isort = { force-single-line = true, relative-imports-order = "closest-to-furthest" }
+flake8-builtins = { builtins-ignorelist = ["id", "type"] }
+flake8-tidy-imports = { ban-relative-imports = "parents" }
+flake8-import-conventions = { banned-from = ["datetime", "time"], aliases = { datetime = "dt", time = "tm" } }
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["pydantic.mypy"]
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_reexport = true
+show_error_codes = true
+
+[tool.pydantic-mypy]
+warn_untyped_fields = true
