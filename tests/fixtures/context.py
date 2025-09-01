@@ -44,12 +44,18 @@ class Contexts:
         page = context.new_page()
 
         page.goto('/login')
+        page.get_by_role('alert').get_by_role('button').click()  # Accept cookies
+
         page.locator('#auth_login_btn').click()
         page.locator('#login-username-button').click()
         page.locator('input[name="username"]').fill(username)
         page.locator('input[name="password"]').fill(password)
         page.locator('input[type="submit"]').click()
         expect(page.locator('#header_username')).to_contain_text(username)
+
+        page.locator('span.ant-notification-notice-close-icon').click()  # Close release notes
+        for element in page.locator('span', has_text="Don't show again").all():  # Close maintenance notices
+            element.click()
 
         storage_state = self.storage_state_dir / f'{username}.json'
         context.storage_state(path=storage_state)
@@ -109,13 +115,17 @@ def collaborator_username() -> str:
 
 
 @pytest.fixture
-def admin_page(contexts: Contexts, admin_username: str) -> Page:
-    return contexts.get_page_for(admin_username)
+def admin_page(contexts: Contexts, admin_username: str) -> Generator[Page]:
+    page = contexts.get_page_for(admin_username)
+    yield page
+    page.close()
 
 
 @pytest.fixture
-def collaborator_page(contexts: Contexts, collaborator_username: str) -> Page:
-    return contexts.get_page_for(collaborator_username)
+def collaborator_page(contexts: Contexts, collaborator_username: str) -> Generator[Page]:
+    page = contexts.get_page_for(collaborator_username)
+    yield page
+    page.close()
 
 
 @pytest.fixture()
