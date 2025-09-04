@@ -237,7 +237,7 @@ def test_file_upload_with_attributes(admin_page: Page, project_code: str, workin
     file_explorer = FileExplorer(admin_page)
     file_explorer.open_project(project_code).navigate_to(working_path / 'file-upload', create_missing_folders=True)
 
-    country = fake.choice.choice(['Europe', 'NorthAmerica', 'SouthAmerica', 'Asia', 'Africa'])
+    country = fake.choice(['Europe', 'NorthAmerica', 'SouthAmerica', 'Asia', 'Africa'])
     comment = fake.text.quote()
     file = File.generate()
     file.attribute = FileAttribute(name='Research', values=[('Country', country), ('Comment', comment)])
