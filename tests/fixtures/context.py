@@ -63,7 +63,7 @@ class Contexts:
 
         return storage_state
 
-    def get_page_for(self, username: str) -> Page:
+    def get_context_for(self, username: str) -> BrowserContext:
         if username not in self.contexts:
             storage_state = self.login(username)
             self.contexts[username] = self.browser.new_context(
@@ -72,7 +72,10 @@ class Contexts:
                 viewport=self.viewport,
             )
 
-        context = self.contexts[username]
+        return self.contexts[username]
+
+    def get_page_for(self, username: str) -> Page:
+        context = self.get_context_for(username)
         return context.new_page()
 
 
@@ -116,16 +119,14 @@ def collaborator_username() -> str:
 
 @pytest.fixture
 def admin_page(contexts: Contexts, admin_username: str) -> Generator[Page]:
-    page = contexts.get_page_for(admin_username)
-    yield page
-    page.close()
+    with contexts.get_page_for(admin_username) as page:
+        yield page
 
 
 @pytest.fixture
 def collaborator_page(contexts: Contexts, collaborator_username: str) -> Generator[Page]:
-    page = contexts.get_page_for(collaborator_username)
-    yield page
-    page.close()
+    with contexts.get_page_for(collaborator_username) as page:
+        yield page
 
 
 @pytest.fixture()

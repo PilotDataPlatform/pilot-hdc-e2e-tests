@@ -12,8 +12,10 @@ import zipfile
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Annotated
 from typing import Self
 
+from annotated_types import Len
 from playwright.sync_api import Download
 from playwright.sync_api import FilePayload
 from playwright.sync_api import Locator
@@ -23,12 +25,20 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 from pydantic import BaseModel
 
+from tests.fixtures.fake import Fake
+
+
+class FileAttribute(BaseModel):
+    name: str
+    values: Annotated[list[tuple[str, str]], Len(min_length=1)]
+
 
 class File(BaseModel):
     name: str
     content: bytes
     hash: str
     tags: list[str] = []
+    attribute: FileAttribute | None = None
 
     @classmethod
     def generate(cls, *, size_mb: int = 1, name: str | None = None, tags_number: int = 0) -> Self:
@@ -51,8 +61,9 @@ class FileExplorer:
     def __init__(self, page: Page) -> None:
         self.page = page
 
-    def open_project(self, project_code: str) -> None:
+    def open_project(self, project_code: str) -> Self:
         self.page.goto(f'/project/{project_code}/data')
+        return self
 
     def download(self, names: list[str]) -> Download:
         for name in names:
@@ -84,7 +95,7 @@ class FileExplorer:
                     file_hash = hashlib.sha1(file_content).hexdigest()
                     yield File(name=fileinfo.filename, content=file_content, hash=file_hash)
 
-    def navigate_to(self, folder_path: Path, *, create_missing_folders: bool = False) -> None:
+    def navigate_to(self, folder_path: Path, *, create_missing_folders: bool = False) -> Self:
         for folder in folder_path.parts:
             try:
                 row = self.locate_folder(folder)
@@ -97,6 +108,7 @@ class FileExplorer:
             expect(self.page.get_by_role('navigation').get_by_role('listitem').last).to_have_text(
                 folder, use_inner_text=True
             )
+        return self
 
     def create_folder(self, folder_name: str) -> None:
         self.page.get_by_role('button', name='plus New Folder', exact=True).click()
@@ -133,6 +145,20 @@ class FileExplorer:
             tags_input.fill(tag)
             tags_input.press('Enter')
             tags_input.press('Escape')
+
+        if file.attribute:
+            dialog.locator('#manifest').click()
+            self.page.locator('.ant-select-dropdown').get_by_title(file.attribute.name, exact=True).click()
+            file_attribute_form = dialog.locator('#manifest-form')
+            for attribute_key, attribute_value in file.attribute.values:
+                value_input = file_attribute_form.locator(f'#{attribute_key}')
+                dropdown_id = value_input.get_attribute('aria-controls')
+                if dropdown_id is None:
+                    value_input.fill(attribute_value)
+                    continue
+
+                value_input.click()
+                file_attribute_form.get_by_title(attribute_value).click()
 
         self.page.get_by_role('button', name='cloud-upload Upload', exact=True).click()
 
@@ -172,8 +198,7 @@ def test_file_upload_and_download(admin_page: Page, project_code: str, working_p
     """Test that a file can be uploaded and then downloaded successfully."""
 
     file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code)
-    file_explorer.navigate_to(working_path / 'file-upload', create_missing_folders=True)
+    file_explorer.open_project(project_code).navigate_to(working_path / 'file-upload', create_missing_folders=True)
 
     file = File.generate()
     with file_explorer.wait_until_uploaded([file.name]):
@@ -188,8 +213,7 @@ def test_file_upload_with_tags(admin_page: Page, project_code: str, working_path
     """Test that a file can be uploaded with tags and those tags are correctly displayed."""
 
     file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code)
-    file_explorer.navigate_to(working_path / 'file-upload', create_missing_folders=True)
+    file_explorer.open_project(project_code).navigate_to(working_path / 'file-upload', create_missing_folders=True)
 
     file = File.generate(tags_number=3)
     with file_explorer.wait_until_uploaded([file.name]):
@@ -204,12 +228,41 @@ def test_file_upload_with_tags(admin_page: Page, project_code: str, working_path
     assert set(file.tags) == set(received_tags)
 
 
+def test_file_upload_with_attributes(admin_page: Page, project_code: str, working_path: Path, fake: Fake) -> None:
+    """Test that a file can be uploaded with specific attributes and those attributes are correctly displayed.
+
+    This test assumes that the project has a file attribute schema named 'Research' with fields 'Country' and 'Comment'.
+    """
+
+    file_explorer = FileExplorer(admin_page)
+    file_explorer.open_project(project_code).navigate_to(working_path / 'file-upload', create_missing_folders=True)
+
+    country = fake.choice(['Europe', 'NorthAmerica', 'SouthAmerica', 'Asia', 'Africa'])
+    comment = fake.text.quote()
+    file = File.generate()
+    file.attribute = FileAttribute(name='Research', values=[('Country', country), ('Comment', comment)])
+    with file_explorer.wait_until_uploaded([file.name]):
+        file_explorer.upload_file(file)
+
+    file_explorer.locate_file(file.name).get_by_label('more').hover()
+    admin_page.get_by_role('menuitem', name='Properties').click()
+    admin_page.get_by_role('button', name='General').click()
+    admin_page.get_by_role('button', name='File Attributes').click()
+
+    expect(admin_page.get_by_role('heading', name='Research')).to_be_visible()
+    expect(admin_page.locator('.ant-collapse-item-active span.ant-descriptions-item-label')).to_contain_text(
+        ['Country', 'Comment']
+    )
+    expect(admin_page.locator('.ant-collapse-item-active span.ant-descriptions-item-content > span')).to_contain_text(
+        [country, comment]
+    )
+
+
 def test_folder_upload_and_download(admin_page: Page, project_code: str, working_path: Path, tmp_path: Path) -> None:
     """Test that a folder can be uploaded and then downloaded successfully."""
 
     file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code)
-    file_explorer.navigate_to(working_path / 'folder-upload', create_missing_folders=True)
+    file_explorer.open_project(project_code).navigate_to(working_path / 'folder-upload', create_missing_folders=True)
 
     folder_name = f'e2e-test-{os.urandom(5).hex()}'
     folder_path = tmp_path / folder_name
@@ -233,8 +286,9 @@ def test_file_resumable_upload_and_download(admin_page: Page, project_code: str,
     """Test that an interrupted file upload can be resumed and then successfully downloaded."""
 
     file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code)
-    file_explorer.navigate_to(working_path / 'file-resume-upload', create_missing_folders=True)
+    file_explorer.open_project(project_code).navigate_to(
+        working_path / 'file-resume-upload', create_missing_folders=True
+    )
 
     file = File.generate(size_mb=10)
     with admin_page.expect_response(
