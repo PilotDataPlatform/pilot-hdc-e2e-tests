@@ -41,8 +41,8 @@ class File(BaseModel):
     attribute: FileAttribute | None = None
 
     @classmethod
-    def generate(cls, *, size_mb: int = 1, name: str | None = None, tags_number: int = 0) -> Self:
-        content = os.urandom(size_mb * 1024 * 1024)
+    def generate(cls, *, size_kb: int = 256, name: str | None = None, tags_number: int = 0) -> Self:
+        content = os.urandom(size_kb * 1024)
         file_hash = hashlib.sha1(content).hexdigest()
         if name is None:
             name = f'e2e-test-{file_hash[:10]}.bin'
@@ -290,7 +290,7 @@ def test_file_resumable_upload_and_download(admin_page: Page, project_code: str,
         working_path / 'file-resume-upload', create_missing_folders=True
     )
 
-    file = File.generate(size_mb=10)
+    file = File.generate(size_kb=4096)
     with admin_page.expect_response(
         lambda r: r.url.endswith(f'project/{project_code}/files') and r.request.method == 'POST'
     ):
