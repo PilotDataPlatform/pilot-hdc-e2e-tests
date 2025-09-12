@@ -1,14 +1,14 @@
 [project]
 name = "e2e-tests"
-version = "0.1.3"
+version = "0.1.4"
 description = "Pilot-HDC end-to-end tests."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "mimesis>=18.0.0",
     "pydantic>=2.11.7",
-    "pytest>=8.4.1",
-    "pytest-playwright>=0.7.0",
+    "pytest>=8.4.2",
+    "pytest-playwright>=0.7.1",
     "pytest-random-order>=1.2.0",
 ]
 

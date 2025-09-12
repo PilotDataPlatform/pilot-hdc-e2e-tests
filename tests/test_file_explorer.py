@@ -111,12 +111,32 @@ class FileExplorer:
             )
         return self
 
-    def create_folder(self, folder_name: str) -> None:
+    def navigate_to_creating_missing_folders(self, folder_path: Path) -> Self:
+        return self.navigate_to(folder_path, create_missing_folders=True)
+
+    def switch_to_tab(self, class_name: str, tab_title: str) -> Self:
+        self.page.get_by_role('tree').locator(f':scope.{class_name}').get_by_title('Home').click()
+        expect(self.page.locator('div.ant-spin-blur')).to_have_count(0)
+        expect(self.page.get_by_role('tab', selected=True)).to_have_text(tab_title)
+        return self
+
+    def switch_to_core(self) -> Self:
+        return self.switch_to_tab('core', 'Core - Home')
+
+    def switch_to_green_room(self) -> Self:
+        return self.switch_to_tab('green_room', 'Green Room - Home')
+
+    def navigate_back(self) -> Self:
+        self.page.get_by_role('navigation').get_by_role('listitem').nth(-2).click()
+        return self
+
+    def create_folder(self, folder_name: str) -> Self:
         self.page.get_by_role('button', name='plus New Folder', exact=True).click()
 
         dialog = self.page.get_by_role('dialog')
         dialog.locator('input').fill(folder_name)
         dialog.get_by_role('button', name='Create').click()
+        return self
 
     def locate_folder(self, name: str) -> Locator:
         return self.locate_row(name, 'folder')
@@ -125,11 +145,22 @@ class FileExplorer:
         return self.locate_row(name, 'file')
 
     def locate_row(self, name: str, type_: str | None = None) -> Locator:
-        row = self.page.locator('tr.ant-table-row').filter(has=self.page.locator('td:nth-child(4)', has_text=name))
+        row = (
+            self.page.get_by_role('tabpanel')
+            .locator('tr.ant-table-row')
+            .filter(has=self.page.locator('td:nth-child(4)', has_text=name))
+        )
         if type_:
             row = row.filter(has=self.page.get_by_label(type_))
         row.wait_for(state='visible', timeout=10000)
         return row
+
+    def get_file_tags(self, file_name: str) -> list[str]:
+        self.locate_file(file_name).get_by_label('more').hover()
+        self.page.get_by_role('menuitem', name='Properties').click()
+        self.page.get_by_label('Expand').click()
+        received_tags = self.page.locator('#rawTable-sidePanel span.ant-tag').all_inner_texts()
+        return received_tags
 
     def upload_file(self, file: File) -> None:
         self.page.get_by_role('button', name='upload Upload', exact=True).click()
@@ -199,7 +230,7 @@ def test_file_upload_and_download(admin_page: Page, project_code: str, working_p
     """Test that a file can be uploaded and then downloaded successfully."""
 
     file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code).navigate_to(working_path / 'file-upload', create_missing_folders=True)
+    file_explorer.open_project(project_code).navigate_to_creating_missing_folders(working_path / 'file-upload')
 
     file = File.generate()
     with file_explorer.wait_until_uploaded([file.name]):
@@ -214,17 +245,13 @@ def test_file_upload_with_tags(admin_page: Page, project_code: str, working_path
     """Test that a file can be uploaded with tags and those tags are correctly displayed."""
 
     file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code).navigate_to(working_path / 'file-upload', create_missing_folders=True)
+    file_explorer.open_project(project_code).navigate_to_creating_missing_folders(working_path / 'file-upload')
 
     file = File.generate(tags_number=3)
     with file_explorer.wait_until_uploaded([file.name]):
         file_explorer.upload_file(file)
 
-    file_explorer.locate_file(file.name).get_by_label('more').hover()
-    admin_page.get_by_role('menuitem', name='Properties').click()
-    admin_page.get_by_label('Expand').click()
-
-    received_tags = admin_page.locator('#rawTable-sidePanel span.ant-tag').all_inner_texts()
+    received_tags = file_explorer.get_file_tags(file.name)
 
     assert set(file.tags) == set(received_tags)
 
@@ -236,7 +263,7 @@ def test_file_upload_with_attributes(admin_page: Page, project_code: str, workin
     """
 
     file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code).navigate_to(working_path / 'file-upload', create_missing_folders=True)
+    file_explorer.open_project(project_code).navigate_to_creating_missing_folders(working_path / 'file-upload')
 
     country = fake.choice(['Europe', 'NorthAmerica', 'SouthAmerica', 'Asia', 'Africa'])
     comment = fake.text.quote()
@@ -263,7 +290,7 @@ def test_folder_upload_and_download(admin_page: Page, project_code: str, working
     """Test that a folder can be uploaded and then downloaded successfully."""
 
     file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code).navigate_to(working_path / 'folder-upload', create_missing_folders=True)
+    file_explorer.open_project(project_code).navigate_to_creating_missing_folders(working_path / 'folder-upload')
 
     folder_name = f'e2e-test-{os.urandom(5).hex()}'
     folder_path = tmp_path / folder_name
@@ -288,9 +315,7 @@ def test_file_resumable_upload_and_download(admin_page: Page, project_code: str,
     """Test that an interrupted file upload can be resumed and then successfully downloaded."""
 
     file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code).navigate_to(
-        working_path / 'file-resume-upload', create_missing_folders=True
-    )
+    file_explorer.open_project(project_code).navigate_to_creating_missing_folders(working_path / 'file-resume-upload')
 
     file = File.generate(size_kb=4096)
     with admin_page.expect_response(
@@ -313,3 +338,41 @@ def test_file_resumable_upload_and_download(admin_page: Page, project_code: str,
     received_file_hash = file_explorer.download_and_get_hash([file.name])
 
     assert received_file_hash == file.hash
+
+
+def test_file_with_tags_copy_to_core_zone(admin_page: Page, project_code: str, working_path: Path) -> None:
+    """Test that a file uploaded with tags is copied to the Core zone together with the tags."""
+
+    file_explorer = FileExplorer(admin_page)
+    full_working_path = working_path / 'file-copy-to-core'
+    file_explorer.open_project(project_code)
+    file_explorer.navigate_to_creating_missing_folders(full_working_path).switch_to_core()
+    file_explorer.navigate_to_creating_missing_folders(full_working_path).switch_to_green_room()
+
+    file = File.generate(tags_number=3)
+    with file_explorer.wait_until_uploaded([file.name]):
+        file_explorer.upload_file(file)
+
+    file_explorer.locate_file(file.name).get_by_role('checkbox').check()
+    admin_page.get_by_role('button', name='copy Copy To Core', exact=True).click()
+    admin_page.get_by_role('button', name='Copy to Core', exact=True).click()
+
+    dialog = admin_page.get_by_role('dialog')
+    dialog.get_by_role('button', name='Select Destination').click()
+
+    dialog.locator('div.ant-tree-treenode').filter(has=admin_page.get_by_role('img', name='user')).click()
+    for folder in full_working_path.parts:
+        dialog.locator('div.ant-tree-treenode-selected ~ div', has=admin_page.get_by_title(folder)).click()
+    dialog.get_by_role('button', name='Select').click()
+
+    code = dialog.locator('b').inner_text()
+    dialog.locator('input').fill(code)
+
+    dialog.get_by_role('button', name='Confirm').click()
+    dialog.get_by_text('Close').click()
+
+    file_explorer.switch_to_core()
+
+    received_tags = file_explorer.get_file_tags(file.name)
+
+    assert set(file.tags) == set(received_tags)
