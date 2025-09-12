@@ -59,11 +59,13 @@ class File(BaseModel):
 
 
 class FileExplorer:
-    def __init__(self, page: Page) -> None:
+    def __init__(self, page: Page, project_code: str) -> None:
         self.page = page
+        self.project_code = project_code
 
-    def open_project(self, project_code: str) -> Self:
-        self.page.goto(f'/project/{project_code}/data')
+    def open(self) -> Self:
+        self.page.goto(f'/project/{self.project_code}/data')
+        expect(self.page.locator('#files_table')).to_be_visible()
         return self
 
     def download(self, names: list[str]) -> Download:
@@ -96,13 +98,20 @@ class FileExplorer:
                     file_hash = hashlib.sha1(file_content).hexdigest()
                     yield File(name=fileinfo.filename, content=file_content, hash=file_hash)
 
-    def navigate_to(self, folder_path: Path, *, create_missing_folders: bool = False) -> Self:
+    def navigate_to(self, folder_path: Path) -> Self:
+        for folder in folder_path.parts:
+            self.locate_folder(folder).get_by_text(folder, exact=True).click()
+            expect(self.page.get_by_role('navigation').get_by_role('listitem').last).to_have_text(
+                folder, use_inner_text=True
+            )
+        return self
+
+    def create_folders_and_navigate_to(self, folder_path: Path) -> Self:
         for folder in folder_path.parts:
             try:
                 row = self.locate_folder(folder)
+                row.wait_for(timeout=2000)
             except PlaywrightTimeoutError:
-                if not create_missing_folders:
-                    raise
                 self.create_folder(folder)
                 row = self.locate_folder(folder)
             row.get_by_text(folder, exact=True).click()
@@ -111,13 +120,21 @@ class FileExplorer:
             )
         return self
 
-    def navigate_to_creating_missing_folders(self, folder_path: Path) -> Self:
-        return self.navigate_to(folder_path, create_missing_folders=True)
+    def wait_until_refreshed(self) -> Self:
+        expect(self.page.locator('div.ant-spin-blur')).to_have_count(0)
+        return self
 
     def switch_to_tab(self, class_name: str, tab_title: str) -> Self:
         self.page.get_by_role('tree').locator(f':scope.{class_name}').get_by_title('Home').click()
         expect(self.page.locator('div.ant-spin-blur')).to_have_count(0)
         expect(self.page.get_by_role('tab', selected=True)).to_have_text(tab_title)
+        return self
+
+    def close_current_tab(self) -> Self:
+        self.page.locator('div.ant-tabs-tab').filter(has=self.page.get_by_role('tab', selected=True)).get_by_label(
+            'remove'
+        ).click()
+        self.wait_until_refreshed()
         return self
 
     def switch_to_core(self) -> Self:
@@ -127,7 +144,7 @@ class FileExplorer:
         return self.switch_to_tab('green_room', 'Green Room - Home')
 
     def navigate_back(self) -> Self:
-        self.page.get_by_role('navigation').get_by_role('listitem').nth(-2).click()
+        self.page.get_by_role('navigation').get_by_role('listitem').nth(-2).locator('span.ant-breadcrumb-link').click()
         return self
 
     def create_folder(self, folder_name: str) -> Self:
@@ -152,7 +169,6 @@ class FileExplorer:
         )
         if type_:
             row = row.filter(has=self.page.get_by_label(type_))
-        row.wait_for(state='visible', timeout=10000)
         return row
 
     def get_file_tags(self, file_name: str) -> list[str]:
@@ -229,8 +245,8 @@ class FileExplorer:
 def test_file_upload_and_download(admin_page: Page, project_code: str, working_path: Path) -> None:
     """Test that a file can be uploaded and then downloaded successfully."""
 
-    file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code).navigate_to_creating_missing_folders(working_path / 'file-upload')
+    file_explorer = FileExplorer(admin_page, project_code)
+    file_explorer.open().create_folders_and_navigate_to(working_path / 'file-upload')
 
     file = File.generate()
     with file_explorer.wait_until_uploaded([file.name]):
@@ -244,8 +260,8 @@ def test_file_upload_and_download(admin_page: Page, project_code: str, working_p
 def test_file_upload_with_tags(admin_page: Page, project_code: str, working_path: Path) -> None:
     """Test that a file can be uploaded with tags and those tags are correctly displayed."""
 
-    file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code).navigate_to_creating_missing_folders(working_path / 'file-upload')
+    file_explorer = FileExplorer(admin_page, project_code)
+    file_explorer.open().create_folders_and_navigate_to(working_path / 'file-upload')
 
     file = File.generate(tags_number=3)
     with file_explorer.wait_until_uploaded([file.name]):
@@ -262,8 +278,8 @@ def test_file_upload_with_attributes(admin_page: Page, project_code: str, workin
     This test assumes that the project has a file attribute schema named 'Research' with fields 'Country' and 'Comment'.
     """
 
-    file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code).navigate_to_creating_missing_folders(working_path / 'file-upload')
+    file_explorer = FileExplorer(admin_page, project_code)
+    file_explorer.open().create_folders_and_navigate_to(working_path / 'file-upload')
 
     country = fake.choice(['Europe', 'NorthAmerica', 'SouthAmerica', 'Asia', 'Africa'])
     comment = fake.text.quote()
@@ -289,8 +305,8 @@ def test_file_upload_with_attributes(admin_page: Page, project_code: str, workin
 def test_folder_upload_and_download(admin_page: Page, project_code: str, working_path: Path, tmp_path: Path) -> None:
     """Test that a folder can be uploaded and then downloaded successfully."""
 
-    file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code).navigate_to_creating_missing_folders(working_path / 'folder-upload')
+    file_explorer = FileExplorer(admin_page, project_code)
+    file_explorer.open().create_folders_and_navigate_to(working_path / 'folder-upload')
 
     folder_name = f'e2e-test-{os.urandom(5).hex()}'
     folder_path = tmp_path / folder_name
@@ -314,8 +330,8 @@ def test_folder_upload_and_download(admin_page: Page, project_code: str, working
 def test_file_resumable_upload_and_download(admin_page: Page, project_code: str, working_path: Path) -> None:
     """Test that an interrupted file upload can be resumed and then successfully downloaded."""
 
-    file_explorer = FileExplorer(admin_page)
-    file_explorer.open_project(project_code).navigate_to_creating_missing_folders(working_path / 'file-resume-upload')
+    file_explorer = FileExplorer(admin_page, project_code)
+    file_explorer.open().create_folders_and_navigate_to(working_path / 'file-resume-upload')
 
     file = File.generate(size_kb=4096)
     with admin_page.expect_response(
@@ -343,11 +359,11 @@ def test_file_resumable_upload_and_download(admin_page: Page, project_code: str,
 def test_file_with_tags_copy_to_core_zone(admin_page: Page, project_code: str, working_path: Path) -> None:
     """Test that a file uploaded with tags is copied to the Core zone together with the tags."""
 
-    file_explorer = FileExplorer(admin_page)
+    file_explorer = FileExplorer(admin_page, project_code)
     full_working_path = working_path / 'file-copy-to-core'
-    file_explorer.open_project(project_code)
-    file_explorer.navigate_to_creating_missing_folders(full_working_path).switch_to_core()
-    file_explorer.navigate_to_creating_missing_folders(full_working_path).switch_to_green_room()
+    file_explorer.open()
+    file_explorer.create_folders_and_navigate_to(full_working_path).switch_to_core()
+    file_explorer.create_folders_and_navigate_to(full_working_path).switch_to_green_room()
 
     file = File.generate(tags_number=3)
     with file_explorer.wait_until_uploaded([file.name]):
@@ -362,7 +378,9 @@ def test_file_with_tags_copy_to_core_zone(admin_page: Page, project_code: str, w
 
     dialog.locator('div.ant-tree-treenode').filter(has=admin_page.get_by_role('img', name='user')).click()
     for folder in full_working_path.parts:
-        dialog.locator('div.ant-tree-treenode-selected ~ div', has=admin_page.get_by_title(folder)).click()
+        dialog.locator('div.ant-tree-treenode-selected ~ div', has=admin_page.get_by_title(folder)).locator(
+            'span.ant-tree-title'
+        ).click()
     dialog.get_by_role('button', name='Select').click()
 
     code = dialog.locator('b').inner_text()
