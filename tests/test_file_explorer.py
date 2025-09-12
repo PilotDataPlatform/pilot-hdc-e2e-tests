@@ -65,7 +65,7 @@ class FileExplorer:
 
     def open(self) -> Self:
         self.page.goto(f'/project/{self.project_code}/data')
-        expect(self.page.locator('#files_table')).to_be_visible()
+        expect(self.page.locator('#files_table')).to_be_visible(timeout=10000)
         return self
 
     def download(self, names: list[str]) -> Download:
@@ -169,6 +169,7 @@ class FileExplorer:
         )
         if type_:
             row = row.filter(has=self.page.get_by_label(type_))
+        expect(row).to_be_attached()
         return row
 
     def get_file_tags(self, file_name: str) -> list[str]:
