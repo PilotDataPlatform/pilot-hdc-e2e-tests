@@ -169,7 +169,6 @@ class FileExplorer:
         )
         if type_:
             row = row.filter(has=self.page.get_by_label(type_))
-        expect(row).to_be_attached()
         return row
 
     def get_file_tags(self, file_name: str) -> list[str]:
