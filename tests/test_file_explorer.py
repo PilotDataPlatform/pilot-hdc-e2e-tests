@@ -8,7 +8,6 @@ import hashlib
 import io
 import os
 import re
-import time as tm
 import zipfile
 from collections.abc import Generator
 from contextlib import contextmanager
@@ -28,20 +27,6 @@ from playwright.sync_api import expect
 from pydantic import BaseModel
 
 from tests.fixtures.fake import Fake
-
-
-class Debug:
-    def __init__(self, output_dir: Path) -> None:
-        self.output_dir = output_dir
-
-    def capture_screenshot(self, page: Page) -> None:
-        page.screenshot(path=self.output_dir / f'debug-screenshot-{int(tm.time())}.png')
-
-
-@pytest.fixture
-def debug(pytestconfig: pytest.Config) -> Debug:
-    output_dir = Path(pytestconfig.getoption('--output')).absolute()
-    return Debug(output_dir)
 
 
 class FileAttribute(BaseModel):
@@ -74,23 +59,34 @@ class File(BaseModel):
 
 
 class FileExplorer:
-    def __init__(self, page: Page, project_code: str, debug: Debug | None = None) -> None:
+    def __init__(self, page: Page, project_code: str) -> None:
         self.page = page
         self.project_code = project_code
-        self.debug = debug
 
     def open(self) -> Self:
-        self.page.goto(f'/project/{self.project_code}/data')
-        expect(self.page.locator('#files_table')).to_be_visible(timeout=10000)
+        with self.page.expect_response(lambda r: 'v1/files/meta?' in r.url and 'order_by=created_time' in r.url):
+            self.page.goto(f'/project/{self.project_code}/data')
         return self
 
+    def toggle_file_status_popover(self, is_open: bool) -> Self:
+        menuitem = self.page.get_by_role('menuitem').filter(has=self.page.locator('span.ant-badge-status'))
+        if (menuitem.locator('div.ant-popover-open').count() == 1) != is_open:
+            menuitem.click()
+        return self
+
+    def open_file_status_popover(self) -> Self:
+        return self.toggle_file_status_popover(True)
+
+    def close_file_status_popover(self) -> Self:
+        return self.toggle_file_status_popover(False)
+
     def download(self, names: list[str]) -> Download:
+        self.close_file_status_popover()
+
         for name in names:
             self.locate_row(name).get_by_role('checkbox').check()
 
         with self.page.expect_download() as download_info:
-            if self.debug:
-                self.debug.capture_screenshot(self.page)
             self.page.get_by_role('button', name='cloud-download Download', exact=True).click()
 
         return download_info.value
@@ -260,10 +256,10 @@ class FileExplorer:
             yield
 
 
-def test_file_upload_and_download(admin_page: Page, project_code: str, working_path: Path, debug: Debug) -> None:
+def test_file_upload_and_download(admin_page: Page, project_code: str, working_path: Path) -> None:
     """Test that a file can be uploaded and then downloaded successfully."""
 
-    file_explorer = FileExplorer(admin_page, project_code, debug)
+    file_explorer = FileExplorer(admin_page, project_code)
     file_explorer.open().create_folders_and_navigate_to(working_path / 'file-upload')
 
     file = File.generate()
@@ -320,12 +316,10 @@ def test_file_upload_with_attributes(admin_page: Page, project_code: str, workin
     )
 
 
-def test_folder_upload_and_download(
-    admin_page: Page, project_code: str, working_path: Path, tmp_path: Path, debug: Debug
-) -> None:
+def test_folder_upload_and_download(admin_page: Page, project_code: str, working_path: Path, tmp_path: Path) -> None:
     """Test that a folder can be uploaded and then downloaded successfully."""
 
-    file_explorer = FileExplorer(admin_page, project_code, debug)
+    file_explorer = FileExplorer(admin_page, project_code)
     file_explorer.open().create_folders_and_navigate_to(working_path / 'folder-upload')
 
     folder_name = f'e2e-test-{os.urandom(5).hex()}'
@@ -347,12 +341,10 @@ def test_folder_upload_and_download(
 
 
 @pytest.mark.skip(reason='Resumable upload has a bug that needs to be fixed')
-def test_file_resumable_upload_and_download(
-    admin_page: Page, project_code: str, working_path: Path, debug: Debug
-) -> None:
+def test_file_resumable_upload_and_download(admin_page: Page, project_code: str, working_path: Path) -> None:
     """Test that an interrupted file upload can be resumed and then successfully downloaded."""
 
-    file_explorer = FileExplorer(admin_page, project_code, debug)
+    file_explorer = FileExplorer(admin_page, project_code)
     file_explorer.open().create_folders_and_navigate_to(working_path / 'file-resume-upload')
 
     file = File.generate(size_kb=4096)
@@ -363,7 +355,7 @@ def test_file_resumable_upload_and_download(
 
     admin_page.reload()
 
-    admin_page.locator('span.ant-badge-status').click()
+    file_explorer.open_file_status_popover()
     first_file_status_line = admin_page.get_by_role('heading', name=re.compile(r'Re-upload file')).first
 
     with file_explorer.wait_until_uploaded([file.name], wait_for_refresh=False):
