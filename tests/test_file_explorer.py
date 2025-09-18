@@ -81,12 +81,12 @@ class FileExplorer:
 
     def open(self) -> Self:
         self.page.goto(f'/project/{self.project_code}/data')
-        with self.page.expect_response(lambda r: r.url.endswith('file/manifest/query') and r.request.method == 'POST'):
+        with self.page.expect_response(lambda r: 'v1/files/meta?' in r.url and 'order_by=created_time' in r.url):
             return self
 
     def toggle_file_status_popover(self, is_open: bool) -> Self:
         menuitem = self.page.get_by_role('menuitem').filter(has=self.page.locator('span.ant-badge-status'))
-        if (menuitem.locator('div.ant-popover-open').count() == 1) is not is_open:
+        if (menuitem.locator('div.ant-popover-open').count() == 1) != is_open:
             menuitem.click()
         return self
 
