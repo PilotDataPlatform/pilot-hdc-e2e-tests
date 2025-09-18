@@ -15,8 +15,9 @@ class Debug:
     def __init__(self, output_dir: Path) -> None:
         self.output_dir = output_dir
 
-    def capture_screenshot(self, page: Page) -> None:
-        page.screenshot(path=self.output_dir / f'debug-screenshot-{int(tm.time())}.png')
+    def capture_screenshot(self, page: Page, text: str = 'debug') -> None:
+        filename = f'{text}-screenshot-{int(tm.time())}.png'
+        page.screenshot(path=self.output_dir / filename)
 
 
 @pytest.fixture

@@ -26,6 +26,7 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 from pydantic import BaseModel
 
+from tests.fixtures.debug import Debug
 from tests.fixtures.fake import Fake
 
 
@@ -59,9 +60,10 @@ class File(BaseModel):
 
 
 class FileExplorer:
-    def __init__(self, page: Page, project_code: str) -> None:
+    def __init__(self, page: Page, project_code: str, debug: Debug | None = None) -> None:
         self.page = page
         self.project_code = project_code
+        self.debug = debug
 
     def open(self) -> Self:
         with self.page.expect_response(lambda r: 'v1/files/meta?' in r.url and 'order_by=created_time' in r.url):
@@ -87,7 +89,11 @@ class FileExplorer:
             self.locate_row(name).get_by_role('checkbox').check()
 
         with self.page.expect_download() as download_info:
+            if self.debug:
+                self.debug.capture_screenshot(self.page, 'before-download-click')
             self.page.get_by_role('button', name='cloud-download Download', exact=True).click()
+            if self.debug:
+                self.debug.capture_screenshot(self.page, 'after-download-click')
 
         return download_info.value
 
@@ -256,10 +262,10 @@ class FileExplorer:
             yield
 
 
-def test_file_upload_and_download(admin_page: Page, project_code: str, working_path: Path) -> None:
+def test_file_upload_and_download(admin_page: Page, project_code: str, working_path: Path, debug: Debug) -> None:
     """Test that a file can be uploaded and then downloaded successfully."""
 
-    file_explorer = FileExplorer(admin_page, project_code)
+    file_explorer = FileExplorer(admin_page, project_code, debug)
     file_explorer.open().create_folders_and_navigate_to(working_path / 'file-upload')
 
     file = File.generate()
@@ -316,10 +322,12 @@ def test_file_upload_with_attributes(admin_page: Page, project_code: str, workin
     )
 
 
-def test_folder_upload_and_download(admin_page: Page, project_code: str, working_path: Path, tmp_path: Path) -> None:
+def test_folder_upload_and_download(
+    admin_page: Page, project_code: str, working_path: Path, tmp_path: Path, debug: Debug
+) -> None:
     """Test that a folder can be uploaded and then downloaded successfully."""
 
-    file_explorer = FileExplorer(admin_page, project_code)
+    file_explorer = FileExplorer(admin_page, project_code, debug)
     file_explorer.open().create_folders_and_navigate_to(working_path / 'folder-upload')
 
     folder_name = f'e2e-test-{os.urandom(5).hex()}'
@@ -341,10 +349,12 @@ def test_folder_upload_and_download(admin_page: Page, project_code: str, working
 
 
 @pytest.mark.skip(reason='Resumable upload has a bug that needs to be fixed')
-def test_file_resumable_upload_and_download(admin_page: Page, project_code: str, working_path: Path) -> None:
+def test_file_resumable_upload_and_download(
+    admin_page: Page, project_code: str, working_path: Path, debug: Debug
+) -> None:
     """Test that an interrupted file upload can be resumed and then successfully downloaded."""
 
-    file_explorer = FileExplorer(admin_page, project_code)
+    file_explorer = FileExplorer(admin_page, project_code, debug)
     file_explorer.open().create_folders_and_navigate_to(working_path / 'file-resume-upload')
 
     file = File.generate(size_kb=4096)
