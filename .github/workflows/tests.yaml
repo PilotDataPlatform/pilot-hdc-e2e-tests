@@ -16,8 +16,6 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-22.04
     steps:
-      - run: exit 1
-
       - name: Checkout code
         uses: actions/checkout@v5
 
@@ -54,7 +52,7 @@ jobs:
   notify-on-failure:
     runs-on: ubuntu-22.04
     needs: tests
-    if: ${{ always() && needs.tests.result == 'failure' }}
+    if: ${{ always() && needs.tests.result == 'failure' && github.event_name == 'schedule' }}
     steps:
       - name: Send Slack notification to kubewatch-hdc-dev channel
         env:
