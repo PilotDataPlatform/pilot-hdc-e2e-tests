@@ -81,10 +81,24 @@ class FileExplorer:
 
     def open(self) -> Self:
         self.page.goto(f'/project/{self.project_code}/data')
-        expect(self.page.locator('#files_table')).to_be_visible(timeout=10000)
+        with self.page.expect_response(lambda r: r.url.endswith('file/manifest/query') and r.request.method == 'POST'):
+            return self
+
+    def toggle_file_status_popover(self, is_open: bool) -> Self:
+        menuitem = self.page.get_by_role('menuitem').filter(has=self.page.locator('span.ant-badge-status'))
+        if (menuitem.locator('div.ant-popover-open').count() == 1) is not is_open:
+            menuitem.click()
         return self
 
+    def open_file_status_popover(self) -> Self:
+        return self.toggle_file_status_popover(True)
+
+    def close_file_status_popover(self) -> Self:
+        return self.toggle_file_status_popover(False)
+
     def download(self, names: list[str]) -> Download:
+        self.close_file_status_popover()
+
         for name in names:
             self.locate_row(name).get_by_role('checkbox').check()
 
@@ -363,7 +377,7 @@ def test_file_resumable_upload_and_download(
 
     admin_page.reload()
 
-    admin_page.locator('span.ant-badge-status').click()
+    file_explorer.open_file_status_popover()
     first_file_status_line = admin_page.get_by_role('heading', name=re.compile(r'Re-upload file')).first
 
     with file_explorer.wait_until_uploaded([file.name], wait_for_refresh=False):
