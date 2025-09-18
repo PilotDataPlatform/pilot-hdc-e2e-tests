@@ -54,7 +54,7 @@ jobs:
   notify-on-failure:
     runs-on: ubuntu-22.04
     needs: tests
-    if: ${{ needs.tests.result == 'failure' }}
+    if: ${{ always() && needs.tests.result == 'failure' }}
     steps:
       - name: Send Slack notification to kubewatch-hdc-dev channel
         env:
