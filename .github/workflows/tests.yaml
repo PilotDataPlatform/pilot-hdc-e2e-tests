@@ -49,12 +49,8 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
 
-  notify-on-failure:
-    runs-on: ubuntu-22.04
-    needs: tests
-    if: ${{ always() && needs.tests.result == 'failure' && github.event_name == 'schedule' }}
-    steps:
       - name: Send Slack notification to kubewatch-hdc-dev channel
+        if: ${{ failure() }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
