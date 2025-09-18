@@ -45,6 +45,17 @@ jobs:
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: screenshots-with-failures
+          name: screenshots
           path: test-results/
           if-no-files-found: ignore
+
+  notify-on-failure:
+    runs-on: ubuntu-22.04
+    needs: tests
+    if: ${{ github.event_name == 'schedule' && failure() }}
+    steps:
+      - name: Send Slack notification to kubewatch-hdc-dev channel
+        run: |
+          wget --quiet --method=POST --header="Content-Type: application/json" \
+          --body-data='{"text":"E2E tests failed. Check logs for details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
