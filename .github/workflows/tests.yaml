@@ -16,8 +16,6 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-22.04
     steps:
-      - run: exit 1
-
       - name: Checkout code
         uses: actions/checkout@v5
 
@@ -52,7 +50,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Send Slack notification to kubewatch-hdc-dev channel
-        if: ${{ failure() }}
+        if: ${{ failure() && github.event_name == 'schedule' }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
