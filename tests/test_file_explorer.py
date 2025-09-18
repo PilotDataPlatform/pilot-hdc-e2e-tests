@@ -80,9 +80,9 @@ class FileExplorer:
         self.debug = debug
 
     def open(self) -> Self:
-        self.page.goto(f'/project/{self.project_code}/data')
         with self.page.expect_response(lambda r: 'v1/files/meta?' in r.url and 'order_by=created_time' in r.url):
-            return self
+            self.page.goto(f'/project/{self.project_code}/data')
+        return self
 
     def toggle_file_status_popover(self, is_open: bool) -> Self:
         menuitem = self.page.get_by_role('menuitem').filter(has=self.page.locator('span.ant-badge-status'))
