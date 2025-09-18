@@ -55,7 +55,9 @@ jobs:
     if: ${{ github.event_name == 'schedule' && needs.tests.result == 'failure' }}
     steps:
       - name: Send Slack notification to kubewatch-hdc-dev channel
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           wget --quiet --method=POST --header="Content-Type: application/json" \
           --body-data='{"text":"E2E tests failed. Check logs for details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
-          ${{ secrets.SLACK_WEBHOOK_URL }}
+          "$SLACK_WEBHOOK_URL"
