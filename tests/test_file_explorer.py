@@ -144,6 +144,25 @@ class FileExplorer:
         expect(self.page.locator('div.ant-spin-blur')).to_have_count(0)
         return self
 
+    def wait_for_stable_count(self, locator: Locator, timeout: int = 5000, max_stable_rounds: int = 5) -> Self:
+        previous_count = -1
+        stable_rounds = 0
+        elapsed_time = 0
+        interval = 500
+
+        while elapsed_time < timeout and stable_rounds < max_stable_rounds:
+            current_count = locator.count()
+            if current_count == previous_count:
+                stable_rounds += 1
+            else:
+                stable_rounds = 0
+                previous_count = current_count
+
+            self.page.wait_for_timeout(interval)
+            elapsed_time += interval
+
+        return self
+
     def switch_to_tab(self, class_name: str, tab_title: str) -> Self:
         self.page.get_by_role('tree').locator(f':scope.{class_name}').get_by_title('Home').click()
         expect(self.page.locator('div.ant-spin-blur')).to_have_count(0)
@@ -260,6 +279,31 @@ class FileExplorer:
 
         with self.page.expect_response(check_response):
             yield
+
+        self.page.wait_for_timeout(1000)
+
+    def select_path_in_dialog_tree(self, dialog: Locator, folder_path: Path, start_level: int = 3) -> Self:
+        path_parts = list(folder_path.parts)
+        while path_parts:
+            available_folders = dialog.locator('div.ant-tree-treenode').filter(
+                has=self.page.locator('span.ant-tree-indent-unit')
+            )
+            self.wait_for_stable_count(available_folders)
+
+            folders = {}
+            for folder in available_folders.all():
+                if folder.locator('span.ant-tree-indent-unit').count() == start_level:
+                    folder_name = folder.locator('span.ant-tree-title').inner_text()
+                    folders[folder_name] = folder
+
+            try:
+                folders[path_parts[0]].click()
+                path_parts.pop(0)
+                start_level += 1
+            except KeyError:
+                folders['...'].click()
+
+        return self
 
 
 def test_file_upload_and_download(admin_page: Page, project_code: str, working_path: Path, debug: Debug) -> None:
@@ -401,10 +445,7 @@ def test_file_with_tags_copy_to_core_zone(admin_page: Page, project_code: str, w
     dialog.get_by_role('button', name='Select Destination').click()
 
     dialog.locator('div.ant-tree-treenode').filter(has=admin_page.get_by_role('img', name='user')).click()
-    for folder in full_working_path.parts:
-        dialog.locator('div.ant-tree-treenode-selected ~ div', has=admin_page.get_by_title(folder)).locator(
-            'span.ant-tree-title'
-        ).click()
+    file_explorer.select_path_in_dialog_tree(dialog, full_working_path)
     dialog.get_by_role('button', name='Select').click()
 
     code = dialog.locator('b').inner_text()
