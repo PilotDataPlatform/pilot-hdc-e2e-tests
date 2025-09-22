@@ -8,4 +8,5 @@ pytest_plugins = [
     'tests.fixtures.context',
     'tests.fixtures.debug',
     'tests.fixtures.fake',
+    'tests.fixtures.file_explorer',
 ]
