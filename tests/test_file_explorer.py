@@ -144,6 +144,25 @@ class FileExplorer:
         expect(self.page.locator('div.ant-spin-blur')).to_have_count(0)
         return self
 
+    def wait_for_stable_count(self, locator: Locator, timeout: int = 5000, max_stable_rounds: int = 5) -> Self:
+        previous_count = -1
+        stable_rounds = 0
+        elapsed_time = 0
+        interval = 500
+
+        while elapsed_time < timeout and stable_rounds < max_stable_rounds:
+            current_count = locator.count()
+            if current_count == previous_count:
+                stable_rounds += 1
+            else:
+                stable_rounds = 0
+                previous_count = current_count
+
+            self.page.wait_for_timeout(interval)
+            elapsed_time += interval
+
+        return self
+
     def switch_to_tab(self, class_name: str, tab_title: str) -> Self:
         self.page.get_by_role('tree').locator(f':scope.{class_name}').get_by_title('Home').click()
         expect(self.page.locator('div.ant-spin-blur')).to_have_count(0)
@@ -269,7 +288,7 @@ class FileExplorer:
             available_folders = dialog.locator('div.ant-tree-treenode').filter(
                 has=self.page.locator('span.ant-tree-indent-unit')
             )
-            self.page.wait_for_timeout(1000)
+            self.wait_for_stable_count(available_folders)
 
             folders = {}
             for folder in available_folders.all():
