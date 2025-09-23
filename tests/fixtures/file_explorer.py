@@ -138,6 +138,12 @@ class FileExplorer:
             )
         return self
 
+    def create_folders_and_upload_file_to(self, file: File, folder_path: Path) -> Self:
+        self.open().create_folders_and_navigate_to(folder_path)
+        with self.wait_until_uploaded([file.name]):
+            self.upload_file(file)
+        return self
+
     def wait_until_refreshed(self) -> Self:
         expect(self.page.locator('div.ant-spin-blur')).to_have_count(0)
         return self
