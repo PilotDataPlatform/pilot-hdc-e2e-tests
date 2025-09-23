@@ -13,7 +13,7 @@ from tests.fixtures.file_explorer import File
 from tests.fixtures.file_explorer import FileExplorer
 
 
-def test_uploaded_file_can_be_found_by_its_name(
+def test_search_uploaded_file_by_exact_name(
     admin_file_explorer: FileExplorer, admin_page: Page, project_code: str, working_path: Path
 ) -> None:
     """Test that uploaded file can be found by its name."""
