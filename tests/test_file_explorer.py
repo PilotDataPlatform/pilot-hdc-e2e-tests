@@ -22,11 +22,8 @@ from tests.fixtures.file_explorer import FileExplorer
 def test_file_upload_and_download(admin_file_explorer: FileExplorer, working_path: Path) -> None:
     """Test that a file can be uploaded and then downloaded successfully."""
 
-    admin_file_explorer.open().create_folders_and_navigate_to(working_path / 'file-upload')
-
     file = File.generate()
-    with admin_file_explorer.wait_until_uploaded([file.name]):
-        admin_file_explorer.upload_file(file)
+    admin_file_explorer.create_folders_and_upload_file_to(file, working_path / 'file-upload')
 
     received_file_hash = admin_file_explorer.download_and_get_hash([file.name])
 
@@ -36,11 +33,8 @@ def test_file_upload_and_download(admin_file_explorer: FileExplorer, working_pat
 def test_file_upload_with_tags(admin_file_explorer: FileExplorer, working_path: Path) -> None:
     """Test that a file can be uploaded with tags and those tags are correctly displayed."""
 
-    admin_file_explorer.open().create_folders_and_navigate_to(working_path / 'file-upload')
-
     file = File.generate(tags_number=3)
-    with admin_file_explorer.wait_until_uploaded([file.name]):
-        admin_file_explorer.upload_file(file)
+    admin_file_explorer.create_folders_and_upload_file_to(file, working_path / 'file-upload')
 
     received_tags = admin_file_explorer.get_file_tags(file.name)
 
@@ -55,14 +49,11 @@ def test_file_upload_with_attributes(
     This test assumes that the project has a file attribute schema named 'Research' with fields 'Country' and 'Comment'.
     """
 
-    admin_file_explorer.open().create_folders_and_navigate_to(working_path / 'file-upload')
-
     country = fake.choice(['Europe', 'NorthAmerica', 'SouthAmerica', 'Asia', 'Africa'])
     comment = fake.text.quote()
     file = File.generate()
     file.attribute = FileAttribute(name='Research', values=[('Country', country), ('Comment', comment)])
-    with admin_file_explorer.wait_until_uploaded([file.name]):
-        admin_file_explorer.upload_file(file)
+    admin_file_explorer.create_folders_and_upload_file_to(file, working_path / 'file-upload')
 
     admin_file_explorer.locate_file(file.name).get_by_label('more').hover()
     admin_page.get_by_role('menuitem', name='Properties').click()
