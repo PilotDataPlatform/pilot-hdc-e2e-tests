@@ -6,6 +6,7 @@
 
 pytest_plugins = [
     'tests.fixtures.context',
+    'tests.fixtures.dataset_explorer',
     'tests.fixtures.debug',
     'tests.fixtures.fake',
     'tests.fixtures.file_explorer',
