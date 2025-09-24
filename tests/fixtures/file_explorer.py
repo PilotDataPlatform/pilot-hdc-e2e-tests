@@ -64,8 +64,10 @@ class FileExplorer:
         self.debug = debug
 
     def open(self) -> Self:
-        with self.page.expect_response(lambda r: 'v1/files/meta?' in r.url and 'order_by=created_time' in r.url):
-            self.page.goto(f'/project/{self.project_code}/data')
+        url = f'/project/{self.project_code}/data'
+        if not self.page.url.endswith(url):
+            with self.page.expect_response(lambda r: 'v1/files/meta?' in r.url and 'order_by=created_time' in r.url):
+                self.page.goto(url)
         return self
 
     def toggle_file_status_popover(self, is_open: bool) -> Self:
@@ -116,6 +118,28 @@ class FileExplorer:
                     file_hash = hashlib.sha1(file_content).hexdigest()
                     yield File(name=fileinfo.filename, content=file_content, hash=file_hash)
 
+    def copy_to_core(self, names: list[str], core_folder_path: Path) -> Self:
+        for name in names:
+            self.locate_row(name).get_by_role('checkbox').check()
+
+        self.page.get_by_role('button', name='copy Copy To Core', exact=True).click()
+        self.page.get_by_role('button', name='Copy to Core', exact=True).click()
+
+        dialog = self.page.get_by_role('dialog')
+        dialog.get_by_role('button', name='Select Destination').click()
+
+        dialog.locator('div.ant-tree-treenode').filter(has=self.page.get_by_role('img', name='user')).click()
+        self.select_path_in_dialog_tree(dialog, core_folder_path)
+        dialog.get_by_role('button', name='Select').click()
+
+        code = dialog.locator('b').inner_text()
+        dialog.locator('input').fill(code)
+
+        dialog.get_by_role('button', name='Confirm').click()
+        dialog.get_by_text('Close').click()
+
+        return self
+
     def navigate_to(self, folder_path: Path) -> Self:
         for folder in folder_path.parts:
             self.locate_folder(folder).get_by_text(folder, exact=True).click()
@@ -125,6 +149,7 @@ class FileExplorer:
         return self
 
     def create_folders_and_navigate_to(self, folder_path: Path) -> Self:
+        self.open()
         for folder in folder_path.parts:
             try:
                 row = self.locate_folder(folder)
@@ -139,7 +164,7 @@ class FileExplorer:
         return self
 
     def create_folders_and_upload_file_to(self, file: File, folder_path: Path) -> Self:
-        self.open().create_folders_and_navigate_to(folder_path)
+        self.create_folders_and_navigate_to(folder_path)
         with self.wait_until_uploaded([file.name]):
             self.upload_file(file)
         return self
@@ -233,6 +258,7 @@ class FileExplorer:
         )
 
         tags_input = dialog.locator('#form_in_modal_tags')
+        tags_input.focus()
         for tag in file.tags:
             tags_input.fill(tag)
             tags_input.press('Enter')

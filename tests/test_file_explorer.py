@@ -72,7 +72,7 @@ def test_file_upload_with_attributes(
 def test_folder_upload_and_download(admin_file_explorer: FileExplorer, working_path: Path, tmp_path: Path) -> None:
     """Test that a folder can be uploaded and then downloaded successfully."""
 
-    admin_file_explorer.open().create_folders_and_navigate_to(working_path / 'folder-upload')
+    admin_file_explorer.create_folders_and_navigate_to(working_path / 'folder-upload')
 
     folder_name = f'e2e-test-{os.urandom(5).hex()}'
     folder_path = tmp_path / folder_name
@@ -98,7 +98,7 @@ def test_file_resumable_upload_and_download(
 ) -> None:
     """Test that an interrupted file upload can be resumed and then successfully downloaded."""
 
-    admin_file_explorer.open().create_folders_and_navigate_to(working_path / 'file-resume-upload')
+    admin_file_explorer.create_folders_and_navigate_to(working_path / 'file-resume-upload')
 
     file = File.generate(size_kb=4096)
     with admin_page.expect_response(
@@ -123,13 +123,10 @@ def test_file_resumable_upload_and_download(
     assert received_file_hash == file.hash
 
 
-def test_file_with_tags_copy_to_core_zone(
-    admin_file_explorer: FileExplorer, admin_page: Page, working_path: Path
-) -> None:
+def test_file_with_tags_copy_to_core_zone(admin_file_explorer: FileExplorer, working_path: Path) -> None:
     """Test that a file uploaded with tags is copied to the Core zone together with the tags."""
 
     full_working_path = working_path / 'file-copy-to-core'
-    admin_file_explorer.open()
     admin_file_explorer.create_folders_and_navigate_to(full_working_path).switch_to_core()
     admin_file_explorer.create_folders_and_navigate_to(full_working_path).switch_to_green_room()
 
@@ -137,24 +134,7 @@ def test_file_with_tags_copy_to_core_zone(
     with admin_file_explorer.wait_until_uploaded([file.name]):
         admin_file_explorer.upload_file(file)
 
-    admin_file_explorer.locate_file(file.name).get_by_role('checkbox').check()
-    admin_page.get_by_role('button', name='copy Copy To Core', exact=True).click()
-    admin_page.get_by_role('button', name='Copy to Core', exact=True).click()
-
-    dialog = admin_page.get_by_role('dialog')
-    dialog.get_by_role('button', name='Select Destination').click()
-
-    dialog.locator('div.ant-tree-treenode').filter(has=admin_page.get_by_role('img', name='user')).click()
-    admin_file_explorer.select_path_in_dialog_tree(dialog, full_working_path)
-    dialog.get_by_role('button', name='Select').click()
-
-    code = dialog.locator('b').inner_text()
-    dialog.locator('input').fill(code)
-
-    dialog.get_by_role('button', name='Confirm').click()
-    dialog.get_by_text('Close').click()
-
-    admin_file_explorer.switch_to_core()
+    admin_file_explorer.copy_to_core([file.name], full_working_path).switch_to_core()
 
     received_tags = admin_file_explorer.get_file_tags(file.name)
 
