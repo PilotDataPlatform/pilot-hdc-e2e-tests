@@ -321,8 +321,6 @@ class FileExplorer:
         with self.page.expect_response(check_response):
             yield
 
-        self.page.wait_for_timeout(5000)  # Explicitly wait to ensure file upload is fully processed on backend
-
     def select_path_in_dialog_tree(self, dialog: Locator, folder_path: Path, start_level: int = 3) -> Self:
         path_parts = list(folder_path.parts)
         while path_parts:
