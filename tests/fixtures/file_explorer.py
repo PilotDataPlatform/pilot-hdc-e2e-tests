@@ -25,8 +25,6 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 from pydantic import BaseModel
 
-from tests.fixtures.debug import Debug
-
 
 class FileAttribute(BaseModel):
     name: str
@@ -58,10 +56,9 @@ class File(BaseModel):
 
 
 class FileExplorer:
-    def __init__(self, page: Page, project_code: str, debug: Debug | None = None) -> None:
+    def __init__(self, page: Page, project_code: str) -> None:
         self.page = page
         self.project_code = project_code
-        self.debug = debug
 
     def open(self) -> Self:
         url = f'/project/{self.project_code}/data'
@@ -89,11 +86,7 @@ class FileExplorer:
             self.locate_row(name).get_by_role('checkbox').check()
 
         with self.page.expect_download() as download_info:
-            if self.debug:
-                self.debug.capture_screenshot(self.page, 'before-download-click')
             self.page.get_by_role('button', name='cloud-download Download', exact=True).click()
-            if self.debug:
-                self.debug.capture_screenshot(self.page, 'after-download-click')
 
         return download_info.value
 
@@ -311,7 +304,7 @@ class FileExplorer:
         with self.page.expect_response(check_response):
             yield
 
-        self.page.wait_for_timeout(5000)  # Debugging errors with download right after upload
+        self.page.wait_for_timeout(5000)  # Explicitly wait to ensure file upload is fully processed on backend
 
     def select_path_in_dialog_tree(self, dialog: Locator, folder_path: Path, start_level: int = 3) -> Self:
         path_parts = list(folder_path.parts)
@@ -338,5 +331,5 @@ class FileExplorer:
 
 
 @pytest.fixture
-def admin_file_explorer(admin_page: Page, project_code: str, debug: Debug) -> FileExplorer:
-    return FileExplorer(admin_page, project_code, debug)
+def admin_file_explorer(admin_page: Page, project_code: str) -> FileExplorer:
+    return FileExplorer(admin_page, project_code)
