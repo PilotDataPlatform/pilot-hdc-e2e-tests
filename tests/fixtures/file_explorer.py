@@ -133,6 +133,23 @@ class FileExplorer:
 
         return self
 
+    def add_to_dataset(self, names: list[str], dataset_code: str) -> Self:
+        for name in names:
+            self.locate_row(name).get_by_role('checkbox').check()
+
+        self.page.get_by_role('button', name='ellipsis').hover()
+        self.page.locator('div.ant-dropdown').get_by_role('button', name='Add to Datasets').click()
+        self.page.locator('div.file_explorer_header_bar').get_by_role('button', name='Add to Datasets').click()
+
+        dialog = self.page.get_by_role('dialog')
+        dialog.locator('div.ant-select').filter(
+            has=self.page.get_by_role('combobox'), has_text='Select Dataset'
+        ).click()
+        self.page.locator('div.ant-select-dropdown').get_by_title(dataset_code).click()
+        dialog.get_by_role('button', name='Add to Dataset').click()
+
+        return self
+
     def navigate_to(self, folder_path: Path) -> Self:
         for folder in folder_path.parts:
             self.locate_folder(folder).get_by_text(folder, exact=True).click()
