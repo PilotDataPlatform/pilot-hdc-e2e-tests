@@ -8,7 +8,6 @@ import datetime as dt
 import os
 from collections.abc import Generator
 from pathlib import Path
-from typing import Any
 
 import pytest
 from playwright.sync_api import BrowserContext
@@ -60,14 +59,6 @@ class Contexts:
         if username not in self.states:
             self.states[username] = self.login(new_context, username)
         return new_context(storage_state=self.states[username], viewport=self.viewport)
-
-
-@pytest.fixture(scope='session')
-def browser_type_launch_args(browser_type_launch_args: dict[str, Any]) -> dict[str, Any]:
-    return {
-        **browser_type_launch_args,
-        'args': ['--disable-popup-blocking'],
-    }
 
 
 @pytest.fixture(scope='session')
