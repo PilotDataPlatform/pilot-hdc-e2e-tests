@@ -61,7 +61,8 @@ class DatasetExplorer:
             authors_input.press('Enter')
             authors_input.press('Escape')
 
-        self.page.get_by_role('button', name='Create').click()
+        with self.page.expect_response(lambda r: r.url.endswith('v1/datasets/') and r.request.method == 'POST'):
+            self.page.get_by_role('button', name='Create').click()
 
         return self
 

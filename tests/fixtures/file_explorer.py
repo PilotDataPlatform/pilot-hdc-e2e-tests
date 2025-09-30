@@ -133,6 +133,23 @@ class FileExplorer:
 
         return self
 
+    def add_to_dataset(self, names: list[str], dataset_code: str) -> Self:
+        for name in names:
+            self.locate_row(name).get_by_role('checkbox').check()
+
+        self.page.get_by_role('button', name='ellipsis').hover()
+        self.page.locator('div.ant-dropdown').get_by_role('button', name='Add to Datasets').click()
+        self.page.locator('div.file_explorer_header_bar').get_by_role('button', name='Add to Datasets').click()
+
+        dialog = self.page.get_by_role('dialog')
+        dialog.locator('div.ant-select').filter(
+            has=self.page.get_by_role('combobox'), has_text='Select Dataset'
+        ).click()
+        self.page.locator('div.ant-select-dropdown').get_by_title(dataset_code).click()
+        dialog.get_by_role('button', name='Add to Dataset').click()
+
+        return self
+
     def navigate_to(self, folder_path: Path) -> Self:
         for folder in folder_path.parts:
             self.locate_folder(folder).get_by_text(folder, exact=True).click()
@@ -167,7 +184,7 @@ class FileExplorer:
         return self
 
     def wait_for_stable_count(
-        self, locator: Locator, interval: int = 250, timeout: int = 5000, max_stable_rounds: int = 5
+        self, locator: Locator, interval: int = 350, timeout: int = 5000, max_stable_rounds: int = 5
     ) -> Self:
         previous_count = -1
         stable_rounds = 0
@@ -303,8 +320,6 @@ class FileExplorer:
 
         with self.page.expect_response(check_response):
             yield
-
-        self.page.wait_for_timeout(5000)  # Explicitly wait to ensure file upload is fully processed on backend
 
     def select_path_in_dialog_tree(self, dialog: Locator, folder_path: Path, start_level: int = 3) -> Self:
         path_parts = list(folder_path.parts)
