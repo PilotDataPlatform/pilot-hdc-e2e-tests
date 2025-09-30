@@ -184,7 +184,7 @@ class FileExplorer:
         return self
 
     def wait_for_stable_count(
-        self, locator: Locator, interval: int = 250, timeout: int = 5000, max_stable_rounds: int = 5
+        self, locator: Locator, interval: int = 500, timeout: int = 5000, max_stable_rounds: int = 5
     ) -> Self:
         previous_count = -1
         stable_rounds = 0
