@@ -21,6 +21,8 @@ def test_search_uploaded_file_by_exact_name(
     file = File.generate()
     admin_file_explorer.create_folders_and_upload_file_to(file, working_path / 'file-search')
 
+    admin_page.wait_for_timeout(5000)  # Wait for the file info to be transferred to the Elasticsearch
+
     admin_page.get_by_role('menuitem', name='Search').click()
 
     admin_page.locator('div.ant-select').filter(has=admin_page.get_by_role('combobox')).click()
