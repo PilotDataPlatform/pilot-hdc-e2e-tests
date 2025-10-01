@@ -4,7 +4,6 @@
 # Version 3.0 (the "License") available at https://www.gnu.org/licenses/agpl-3.0.en.html.
 # You may not use this file except in compliance with the License.
 
-import os
 import re
 from pathlib import Path
 
@@ -69,12 +68,14 @@ def test_file_upload_with_attributes(
     )
 
 
-def test_folder_upload_and_download(admin_file_explorer: FileExplorer, working_path: Path, tmp_path: Path) -> None:
+def test_folder_upload_and_download(
+    admin_file_explorer: FileExplorer, working_path: Path, tmp_path: Path, fake: Fake
+) -> None:
     """Test that a folder can be uploaded and then downloaded successfully."""
 
     admin_file_explorer.create_folders_and_navigate_to(working_path / 'folder-upload')
 
-    folder_name = f'e2e-test-{os.urandom(5).hex()}'
+    folder_name = fake.folder_name()
     folder_path = tmp_path / folder_name
     folder_path.mkdir()
 

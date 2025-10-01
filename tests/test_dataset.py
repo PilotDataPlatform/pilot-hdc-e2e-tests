@@ -4,7 +4,6 @@
 # Version 3.0 (the "License") available at https://www.gnu.org/licenses/agpl-3.0.en.html.
 # You may not use this file except in compliance with the License.
 
-import os
 from pathlib import Path
 
 from playwright.sync_api import Page
@@ -12,8 +11,10 @@ from playwright.sync_api import expect
 
 from tests.fixtures.dataset_explorer import Dataset
 from tests.fixtures.dataset_explorer import DatasetExplorer
+from tests.fixtures.fake import Fake
 from tests.fixtures.file_explorer import File
 from tests.fixtures.file_explorer import FileExplorer
+from tests.fixtures.file_explorer import Files
 
 
 def test_dataset_creation(admin_dataset_explorer: DatasetExplorer, admin_page: Page, project_code: str) -> None:
@@ -56,6 +57,7 @@ def test_add_folder_with_files_to_dataset(
     project_code: str,
     working_path: Path,
     tmp_path: Path,
+    fake: Fake,
 ) -> None:
     """Test that a folder with files can be added to a dataset and is displayed in the dataset explorer."""
 
@@ -65,7 +67,7 @@ def test_add_folder_with_files_to_dataset(
     full_working_path = working_path / 'folders-for-dataset'
     admin_file_explorer.create_folders_in_greenroom_and_core(full_working_path)
 
-    folder_name = f'e2e-test-{os.urandom(5).hex()}'
+    folder_name = fake.folder_name()
     folder_path = tmp_path / folder_name
     folder_path.mkdir()
 
@@ -87,3 +89,40 @@ def test_add_folder_with_files_to_dataset(
     admin_page.locator('div.ant-tree-treenode').filter(has_text=folder_name).locator('span.ant-tree-switcher').click()
     expect(explorer_tree).to_contain_text(file_1.name)
     expect(explorer_tree).to_contain_text(file_2.name)
+
+
+def test_new_folder_and_file_move_in_dataset(
+    admin_dataset_explorer: DatasetExplorer,
+    admin_file_explorer: FileExplorer,
+    admin_page: Page,
+    project_code: str,
+    working_path: Path,
+    fake: Fake,
+) -> None:
+    """Test that a new folder can be created in a dataset and a file can be moved into that folder."""
+
+    dataset = Dataset.generate(project_code=project_code)
+    admin_dataset_explorer.create_dataset(dataset)
+
+    full_working_path = working_path / 'files-for-dataset'
+    admin_file_explorer.create_folders_in_greenroom_and_core(full_working_path)
+
+    files = Files.generate(2)
+    admin_file_explorer.upload_files_and_wait_until_uploaded(files)
+    admin_file_explorer.copy_to_core(files.names, full_working_path).switch_to_core()
+    admin_file_explorer.add_to_dataset(files.names, dataset.code)
+    admin_dataset_explorer.wait_for_import_completion(dataset.code, files.names)
+
+    file_to_move = files[0]
+    dataset_folder_name = fake.folder_name()
+    admin_dataset_explorer.create_folder(dataset_folder_name)
+    admin_dataset_explorer.move_to_folder([file_to_move.name], dataset_folder_name)
+    admin_dataset_explorer.wait_for_move_completion(dataset.code, [file_to_move.name])
+
+    explorer_tree = admin_page.locator('div.ant-tree-list-holder-inner')
+    expect(explorer_tree).not_to_contain_text(file_to_move.name)
+
+    admin_page.locator('div.ant-tree-treenode').filter(has_text=dataset_folder_name).locator(
+        'span.ant-tree-switcher'
+    ).click()
+    expect(explorer_tree).to_contain_text(file_to_move.name)
