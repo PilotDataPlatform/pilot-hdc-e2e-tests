@@ -39,7 +39,7 @@ class File(BaseModel):
     attribute: FileAttribute | None = None
 
     @classmethod
-    def generate(cls, *, size_kb: int = 256, name: str | None = None, tags_number: int = 0) -> Self:
+    def generate(cls, *, size_kb: int = 64, name: str | None = None, tags_number: int = 0) -> Self:
         content = os.urandom(size_kb * 1024)
         file_hash = hashlib.sha1(content).hexdigest()
         if name is None:
