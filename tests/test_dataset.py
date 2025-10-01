@@ -44,7 +44,7 @@ def test_add_file_to_dataset(
     admin_file_explorer.create_folders_and_navigate_to(full_working_path).switch_to_green_room()
     admin_file_explorer.copy_to_core([file.name], full_working_path).switch_to_core()
     admin_file_explorer.add_to_dataset([file.name], dataset.code)
-    admin_dataset_explorer.wait_for_import_completion(dataset.code, [file.name])
+    admin_dataset_explorer.open(dataset.code).wait_for_import_completion([file.name])
 
     explorer_tree = admin_page.locator('div.ant-tree-list-holder-inner')
     expect(explorer_tree).to_contain_text(file.name)
@@ -81,7 +81,7 @@ def test_add_folder_with_files_to_dataset(
 
     admin_file_explorer.copy_to_core([folder_name], full_working_path).switch_to_core()
     admin_file_explorer.add_to_dataset([folder_name], dataset.code)
-    admin_dataset_explorer.wait_for_import_completion(dataset.code, [folder_name])
+    admin_dataset_explorer.open(dataset.code).wait_for_import_completion([folder_name])
 
     explorer_tree = admin_page.locator('div.ant-tree-list-holder-inner')
     expect(explorer_tree).to_contain_text(folder_name)
@@ -111,13 +111,13 @@ def test_new_folder_and_file_move_in_dataset(
     admin_file_explorer.upload_files_and_wait_until_uploaded(files)
     admin_file_explorer.copy_to_core(files.names, full_working_path).switch_to_core()
     admin_file_explorer.add_to_dataset(files.names, dataset.code)
-    admin_dataset_explorer.wait_for_import_completion(dataset.code, files.names)
+    admin_dataset_explorer.open(dataset.code).wait_for_import_completion(files.names)
 
     file_to_move = files[0]
     dataset_folder_name = fake.folder_name()
     admin_dataset_explorer.create_folder(dataset_folder_name)
     admin_dataset_explorer.move_to_folder([file_to_move.name], dataset_folder_name)
-    admin_dataset_explorer.wait_for_move_completion(dataset.code, [file_to_move.name])
+    admin_dataset_explorer.wait_for_move_completion([file_to_move.name])
 
     explorer_tree = admin_page.locator('div.ant-tree-list-holder-inner')
     expect(explorer_tree).not_to_contain_text(file_to_move.name)

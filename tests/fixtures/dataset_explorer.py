@@ -47,8 +47,10 @@ class DatasetExplorer:
         self.project_code = project_code
 
     def open(self, dataset_code: str) -> Self:
-        with self.wait_until_refreshed():
-            self.page.goto(f'/dataset/{dataset_code}/data')
+        url = f'/dataset/{dataset_code}/data'
+        if not self.page.url.endswith(url):
+            with self.wait_until_refreshed():
+                self.page.goto(url)
         return self
 
     def toggle_dataset_status_popover(self, is_open: bool) -> Self:
@@ -121,8 +123,7 @@ class DatasetExplorer:
 
         return self
 
-    def wait_for_action_completion(self, dataset_code: str, tab: str, names: list[str]) -> Self:
-        self.open(dataset_code)
+    def wait_for_action_completion(self, tab: str, names: list[str]) -> Self:
         self.open_dataset_status_popover(tab)
         for name in names:
             expect(self.page.get_by_role('tabpanel')).to_contain_text(f'{name} - Succeed')
@@ -131,11 +132,11 @@ class DatasetExplorer:
             self.page.get_by_role('menuitem', name='Explorer').click()
         return self
 
-    def wait_for_import_completion(self, dataset_code: str, names: list[str]) -> Self:
-        return self.wait_for_action_completion(dataset_code, 'Import', names)
+    def wait_for_import_completion(self, names: list[str]) -> Self:
+        return self.wait_for_action_completion('Import', names)
 
-    def wait_for_move_completion(self, dataset_code: str, names: list[str]) -> Self:
-        return self.wait_for_action_completion(dataset_code, 'Move', names)
+    def wait_for_move_completion(self, names: list[str]) -> Self:
+        return self.wait_for_action_completion('Move', names)
 
     @contextmanager
     def wait_until_refreshed(self) -> Generator[None]:
