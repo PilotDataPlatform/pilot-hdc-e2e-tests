@@ -127,8 +127,7 @@ def test_file_with_tags_copy_to_core_zone(admin_file_explorer: FileExplorer, wor
     """Test that a file uploaded with tags is copied to the Core zone together with the tags."""
 
     full_working_path = working_path / 'file-copy-to-core'
-    admin_file_explorer.create_folders_and_navigate_to(full_working_path).switch_to_core()
-    admin_file_explorer.create_folders_and_navigate_to(full_working_path).switch_to_green_room()
+    admin_file_explorer.create_folders_in_greenroom_and_core(full_working_path)
 
     file = File.generate(tags_number=3)
     with admin_file_explorer.wait_until_uploaded([file.name]):
