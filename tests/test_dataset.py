@@ -57,6 +57,8 @@ def test_add_folder_with_files_to_dataset(
     working_path: Path,
     tmp_path: Path,
 ) -> None:
+    """Test that a folder with files can be added to a dataset and is displayed in the dataset explorer."""
+
     dataset = Dataset.generate(project_code=project_code)
     admin_dataset_explorer.create_dataset(dataset)
 

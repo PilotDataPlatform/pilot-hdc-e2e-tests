@@ -55,6 +55,28 @@ class File(BaseModel):
         return file_path
 
 
+class Files(BaseModel):
+    files: Annotated[list[File], Len(min_length=1)]
+
+    @property
+    def tags(self) -> list[str]:
+        return self.files[0].tags
+
+    @property
+    def attribute(self) -> FileAttribute | None:
+        return self.files[0].attribute
+
+    @property
+    def names(self) -> list[str]:
+        return [file.name for file in self.files]
+
+    @property
+    def payloads(self) -> list[FilePayload]:
+        return [
+            FilePayload(name=file.name, mimeType='application/octet-stream', buffer=file.content) for file in self.files
+        ]
+
+
 class FileExplorer:
     def __init__(self, page: Page, project_code: str) -> None:
         self.page = page
@@ -187,9 +209,7 @@ class FileExplorer:
 
     def create_folders_and_upload_file_to(self, file: File, folder_path: Path) -> Self:
         self.create_folders_and_navigate_to(folder_path)
-        with self.wait_until_uploaded([file.name]):
-            self.upload_file(file)
-        return self
+        return self.upload_file_and_wait_until_uploaded(file)
 
     def create_folders_in_greenroom_and_core(self, folder_path: Path) -> Self:
         self.create_folders_and_navigate_to(folder_path).switch_to_core()
@@ -270,28 +290,29 @@ class FileExplorer:
         received_tags = self.page.locator('#rawTable-sidePanel span.ant-tag').all_inner_texts()
         return received_tags
 
-    def upload_file(self, file: File) -> None:
+    def upload_file(self, file: File) -> Self:
+        return self.upload_files(Files(files=[file]))
+
+    def upload_files(self, files: Files) -> Self:
         self.page.get_by_role('button', name='upload Upload', exact=True).click()
 
         dialog = self.page.get_by_role('dialog')
 
         file_input = dialog.locator('#form_in_modal_file')
-        file_input.set_input_files(
-            FilePayload(name=file.name, mimeType='application/octet-stream', buffer=file.content)
-        )
+        file_input.set_input_files(files.payloads)
 
         tags_input = dialog.locator('#form_in_modal_tags')
         tags_input.focus()
-        for tag in file.tags:
+        for tag in files.tags:
             tags_input.fill(tag)
             tags_input.press('Enter')
             tags_input.press('Escape')
 
-        if file.attribute:
+        if files.attribute:
             dialog.locator('#manifest').click()
-            self.page.locator('.ant-select-dropdown').get_by_title(file.attribute.name, exact=True).click()
+            self.page.locator('.ant-select-dropdown').get_by_title(files.attribute.name, exact=True).click()
             file_attribute_form = dialog.locator('#manifest-form')
-            for attribute_key, attribute_value in file.attribute.values:
+            for attribute_key, attribute_value in files.attribute.values:
                 value_input = file_attribute_form.locator(f'#{attribute_key}')
                 dropdown_id = value_input.get_attribute('aria-controls')
                 if dropdown_id is None:
@@ -302,6 +323,18 @@ class FileExplorer:
                 file_attribute_form.get_by_title(attribute_value).click()
 
         self.page.get_by_role('button', name='cloud-upload Upload', exact=True).click()
+
+        return self
+
+    def upload_file_and_wait_until_uploaded(self, file: File) -> Self:
+        with self.wait_until_uploaded([file.name]):
+            self.upload_file(file)
+        return self
+
+    def upload_files_and_wait_until_uploaded(self, files: Files) -> Self:
+        with self.wait_until_uploaded(files.names):
+            self.upload_files(files)
+        return self
 
     def upload_folder(self, folder_path: Path) -> None:
         self.page.get_by_role('button', name='upload Upload', exact=True).click()

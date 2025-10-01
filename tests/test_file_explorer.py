@@ -130,8 +130,7 @@ def test_file_with_tags_copy_to_core_zone(admin_file_explorer: FileExplorer, wor
     admin_file_explorer.create_folders_in_greenroom_and_core(full_working_path)
 
     file = File.generate(tags_number=3)
-    with admin_file_explorer.wait_until_uploaded([file.name]):
-        admin_file_explorer.upload_file(file)
+    admin_file_explorer.upload_file_and_wait_until_uploaded(file)
 
     admin_file_explorer.copy_to_core([file.name], full_working_path).switch_to_core()
 
