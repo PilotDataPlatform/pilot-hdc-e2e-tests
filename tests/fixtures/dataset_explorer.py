@@ -11,6 +11,7 @@ from typing import Self
 import pytest
 from annotated_types import Len
 from playwright.sync_api import Page
+from playwright.sync_api import expect
 from pydantic import BaseModel
 
 
@@ -42,6 +43,25 @@ class DatasetExplorer:
         self.page = page
         self.project_code = project_code
 
+    def open(self, dataset_code: str) -> Self:
+        with self.page.expect_response(lambda r: r.url.endswith('/files')):
+            self.page.goto(f'/dataset/{dataset_code}/data')
+        return self
+
+    def toggle_dataset_status_popover(self, is_open: bool) -> Self:
+        file_panel = self.page.locator('[class*=DatasetFilePanel_file_panel]')
+        if ('ant-popover-open' in file_panel.get_attribute('class')) != is_open:
+            file_panel.click()
+        return self
+
+    def open_dataset_status_popover(self, tab: str = 'Import') -> Self:
+        self.toggle_dataset_status_popover(True)
+        self.page.get_by_role('tab', name=tab).click()
+        return self
+
+    def close_dataset_status_popover(self) -> Self:
+        return self.toggle_dataset_status_popover(False)
+
     def create_dataset(self, dataset: Dataset) -> Self:
         self.page.goto('/datasets')
 
@@ -66,9 +86,12 @@ class DatasetExplorer:
 
         return self
 
-    def open_dataset(self, dataset_code: str) -> Self:
-        with self.page.expect_response(lambda r: r.url.endswith('/files')):
-            self.page.goto(f'/dataset/{dataset_code}/data')
+    def wait_for_import_completion(self, dataset_code: str, names: list[str]) -> Self:
+        self.open(dataset_code)
+        self.open_dataset_status_popover()
+        for name in names:
+            expect(self.page.get_by_role('tabpanel')).to_contain_text(f'{name} - Succeed')
+        self.open(dataset_code)
         return self
 
 

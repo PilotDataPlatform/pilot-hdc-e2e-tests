@@ -39,7 +39,7 @@ class File(BaseModel):
     attribute: FileAttribute | None = None
 
     @classmethod
-    def generate(cls, *, size_kb: int = 256, name: str | None = None, tags_number: int = 0) -> Self:
+    def generate(cls, *, size_kb: int = 64, name: str | None = None, tags_number: int = 0) -> Self:
         content = os.urandom(size_kb * 1024)
         file_hash = hashlib.sha1(content).hexdigest()
         if name is None:
@@ -63,7 +63,7 @@ class FileExplorer:
     def open(self) -> Self:
         url = f'/project/{self.project_code}/data'
         if not self.page.url.endswith(url):
-            with self.page.expect_response(lambda r: 'v1/files/meta?' in r.url and 'order_by=created_time' in r.url):
+            with self.wait_until_refreshed():
                 self.page.goto(url)
         return self
 
@@ -146,12 +146,23 @@ class FileExplorer:
             has=self.page.get_by_role('combobox'), has_text='Select Dataset'
         ).click()
         self.page.locator('div.ant-select-dropdown').get_by_title(dataset_code).click()
-        dialog.get_by_role('button', name='Add to Dataset').click()
 
+        with self.page.expect_response(lambda r: r.url.endswith('/files') and r.request.method == 'PUT'):
+            dialog.get_by_role('button', name='Add to Dataset').click()
+
+        return self
+
+    def maximize_page_size(self) -> Self:
+        active_tab = self.page.locator('div.ant-tabs-tabpane-active')
+        if active_tab.locator('li.ant-pagination-item').count() > 1:
+            active_tab.locator('li.ant-pagination-options div.ant-select').click()
+            with self.wait_until_refreshed():
+                active_tab.locator('div.ant-select-dropdown div.ant-select-item').last.click()
         return self
 
     def navigate_to(self, folder_path: Path) -> Self:
         for folder in folder_path.parts:
+            self.maximize_page_size()
             self.locate_folder(folder).get_by_text(folder, exact=True).click()
             expect(self.page.get_by_role('navigation').get_by_role('listitem').last).to_have_text(
                 folder, use_inner_text=True
@@ -161,6 +172,7 @@ class FileExplorer:
     def create_folders_and_navigate_to(self, folder_path: Path) -> Self:
         self.open()
         for folder in folder_path.parts:
+            self.maximize_page_size()
             try:
                 row = self.locate_folder(folder)
                 row.wait_for(timeout=2000)
@@ -179,8 +191,9 @@ class FileExplorer:
             self.upload_file(file)
         return self
 
-    def wait_until_refreshed(self) -> Self:
-        expect(self.page.locator('div.ant-spin-blur')).to_have_count(0)
+    def create_folders_in_greenroom_and_core(self, folder_path: Path) -> Self:
+        self.create_folders_and_navigate_to(folder_path).switch_to_core()
+        self.create_folders_and_navigate_to(folder_path).switch_to_green_room()
         return self
 
     def wait_for_stable_count(
@@ -210,10 +223,10 @@ class FileExplorer:
         return self
 
     def close_current_tab(self) -> Self:
-        self.page.locator('div.ant-tabs-tab').filter(has=self.page.get_by_role('tab', selected=True)).get_by_label(
-            'remove'
-        ).click()
-        self.wait_until_refreshed()
+        with self.wait_until_refreshed():
+            self.page.locator('div.ant-tabs-tab').filter(has=self.page.get_by_role('tab', selected=True)).get_by_label(
+                'remove'
+            ).click()
         return self
 
     def switch_to_core(self) -> Self:
@@ -319,6 +332,11 @@ class FileExplorer:
             return 'v1/files/meta?' in response.url
 
         with self.page.expect_response(check_response):
+            yield
+
+    @contextmanager
+    def wait_until_refreshed(self) -> Generator[None]:
+        with self.page.expect_response(lambda r: 'v1/files/meta?' in r.url and 'order_by=created_time' in r.url):
             yield
 
     def select_path_in_dialog_tree(self, dialog: Locator, folder_path: Path, start_level: int = 3) -> Self:
