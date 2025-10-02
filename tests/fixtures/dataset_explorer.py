@@ -5,11 +5,14 @@
 # You may not use this file except in compliance with the License.
 
 import os
+from collections.abc import Generator
+from contextlib import contextmanager
 from typing import Annotated
 from typing import Self
 
 import pytest
 from annotated_types import Len
+from playwright.sync_api import Locator
 from playwright.sync_api import Page
 from playwright.sync_api import expect
 from pydantic import BaseModel
@@ -44,8 +47,10 @@ class DatasetExplorer:
         self.project_code = project_code
 
     def open(self, dataset_code: str) -> Self:
-        with self.page.expect_response(lambda r: r.url.endswith('/files')):
-            self.page.goto(f'/dataset/{dataset_code}/data')
+        url = f'/dataset/{dataset_code}/data'
+        if not self.page.url.endswith(url):
+            with self.wait_until_refreshed():
+                self.page.goto(url)
         return self
 
     def toggle_dataset_status_popover(self, is_open: bool) -> Self:
@@ -86,13 +91,57 @@ class DatasetExplorer:
 
         return self
 
-    def wait_for_import_completion(self, dataset_code: str, names: list[str]) -> Self:
-        self.open(dataset_code)
-        self.open_dataset_status_popover()
+    def create_folder(self, folder_name: str) -> Self:
+        self.page.get_by_role('button', name='plus New Folder', exact=True).click()
+
+        dialog = self.page.get_by_role('dialog')
+        dialog.locator('input').fill(folder_name)
+        dialog.get_by_role('button', name='Create').click()
+
+        explorer_tree = self.page.locator('div.ant-tree-list-holder-inner')
+        expect(explorer_tree).to_contain_text(folder_name)
+
+        return self
+
+    def locate_row(self, name: str) -> Locator:
+        return (
+            self.page.get_by_role('tree')
+            .locator('div.ant-tree-treenode')
+            .filter(has=self.page.locator('span.node-name'), has_text=name)
+        )
+
+    def move_to_folder(self, names: list[str], folder_name: str) -> Self:
+        for name in names:
+            self.locate_row(name).locator('span.ant-tree-checkbox').click()
+
+        self.page.get_by_role('button', name='swap Move to', exact=True).click()
+
+        dialog = self.page.get_by_role('dialog')
+        dialog.locator('span.ant-tree-switcher').click()
+        dialog.locator('span.ant-tree-title').filter(has_text=folder_name).click()
+        dialog.get_by_role('button', name='Move to').click()
+
+        return self
+
+    def wait_for_action_completion(self, tab: str, names: list[str]) -> Self:
+        self.open_dataset_status_popover(tab)
         for name in names:
             expect(self.page.get_by_role('tabpanel')).to_contain_text(f'{name} - Succeed')
-        self.open(dataset_code)
+        self.page.get_by_role('menuitem', name='Home').click()
+        with self.wait_until_refreshed():
+            self.page.get_by_role('menuitem', name='Explorer').click()
         return self
+
+    def wait_for_import_completion(self, names: list[str]) -> Self:
+        return self.wait_for_action_completion('Import', names)
+
+    def wait_for_move_completion(self, names: list[str]) -> Self:
+        return self.wait_for_action_completion('Move', names)
+
+    @contextmanager
+    def wait_until_refreshed(self) -> Generator[None]:
+        with self.page.expect_response(lambda r: r.url.endswith('/files')):
+            yield
 
 
 @pytest.fixture

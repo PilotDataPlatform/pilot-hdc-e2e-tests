@@ -24,6 +24,7 @@ from playwright.sync_api import Response
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 from pydantic import BaseModel
+from pydantic import RootModel
 
 
 class FileAttribute(BaseModel):
@@ -55,26 +56,31 @@ class File(BaseModel):
         return file_path
 
 
-class Files(BaseModel):
-    files: Annotated[list[File], Len(min_length=1)]
+class Files(RootModel[Annotated[list[File], Len(min_length=1)]]):
+    def __getitem__(self, item: int) -> File:
+        return self.root[item]
 
     @property
     def tags(self) -> list[str]:
-        return self.files[0].tags
+        return self[0].tags
 
     @property
     def attribute(self) -> FileAttribute | None:
-        return self.files[0].attribute
+        return self[0].attribute
 
     @property
     def names(self) -> list[str]:
-        return [file.name for file in self.files]
+        return [file.name for file in self.root]
 
     @property
     def payloads(self) -> list[FilePayload]:
         return [
-            FilePayload(name=file.name, mimeType='application/octet-stream', buffer=file.content) for file in self.files
+            FilePayload(name=file.name, mimeType='application/octet-stream', buffer=file.content) for file in self.root
         ]
+
+    @classmethod
+    def generate(cls, number: int) -> Self:
+        return cls([File.generate() for _ in range(number)])
 
 
 class FileExplorer:
@@ -265,6 +271,10 @@ class FileExplorer:
         dialog = self.page.get_by_role('dialog')
         dialog.locator('input').fill(folder_name)
         dialog.get_by_role('button', name='Create').click()
+
+        active_tab = self.page.locator('div.ant-tabs-tabpane-active div.ant-table')
+        expect(active_tab).to_contain_text(folder_name)
+
         return self
 
     def locate_folder(self, name: str) -> Locator:
@@ -291,7 +301,7 @@ class FileExplorer:
         return received_tags
 
     def upload_file(self, file: File) -> Self:
-        return self.upload_files(Files(files=[file]))
+        return self.upload_files(Files([file]))
 
     def upload_files(self, files: Files) -> Self:
         self.page.get_by_role('button', name='upload Upload', exact=True).click()
