@@ -10,4 +10,5 @@ pytest_plugins = [
     'tests.fixtures.debug',
     'tests.fixtures.fake',
     'tests.fixtures.file_explorer',
+    'tests.fixtures.pilotcli',
 ]
