@@ -51,6 +51,7 @@ repos:
       - id: mypy
         additional_dependencies: [
           'pydantic>=2.11.7',
+          'types-requests>=2.32.4',
         ]
 
   - repo: https://github.com/Lucas-C/pre-commit-hooks

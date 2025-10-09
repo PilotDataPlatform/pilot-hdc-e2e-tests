@@ -80,6 +80,11 @@ def project_code() -> str:
 
 
 @pytest.fixture(scope='session')
+def pilotcli_version_tag() -> str:
+    return os.environ.get('E2E_TESTING_PILOTCLI_VERSION_TAG', '2.2.7-hdc')
+
+
+@pytest.fixture(scope='session')
 def admin_username() -> str:
     return os.environ.get('E2E_TESTING_ADMIN_USERNAME', 'e2etestingadmin')
 
