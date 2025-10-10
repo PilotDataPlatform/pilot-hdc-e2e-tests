@@ -6,6 +6,7 @@
 
 import re
 import shutil
+import time as tm
 from pathlib import Path
 from typing import Self
 from uuid import uuid4
@@ -25,6 +26,18 @@ class Container(DockerContainer):
         stdout, _ = self.get_logs()
         return stdout.decode()
 
+    def wait_until_stopped(self, timeout: int = 10000) -> str:
+        wrapped = self.get_wrapped_container()
+
+        start_time = tm.monotonic()
+        while (tm.monotonic() - start_time) * 1000 < timeout:
+            wrapped.reload()
+            if wrapped.status == 'exited':
+                return self.get_stdout()
+            tm.sleep(0.5)
+
+        raise TimeoutError(f'Container did not stop within {timeout} milliseconds.')
+
     def wait_for_logs(self, text: str, timeout: int = 10000) -> str:
         wait_for_logs(self, text, timeout=timeout / 1000)
         return self.get_stdout()
@@ -32,6 +45,7 @@ class Container(DockerContainer):
 
 class PilotCLI(BaseModel):
     work_dir: Path
+    work_dir_container: Path = Path('/app')
 
     @property
     def config_file(self) -> Path:
@@ -59,7 +73,7 @@ class PilotCLI(BaseModel):
         return Container(
             image='ubuntu:noble',
             platform='linux/amd64',
-            working_dir='/app',
+            working_dir=str(self.work_dir_container),
             env={
                 'harbor_client_secret': str(uuid4()),
                 'keycloak_device_client_id': 'cli',
@@ -69,10 +83,10 @@ class PilotCLI(BaseModel):
                 'url_keycloak': 'https://iam.hdc.humanbrainproject.eu/realms/hdc/protocol/openid-connect',
             },
             volumes=[
-                (str(self.work_dir), '/app', 'rw'),
+                (str(self.work_dir), str(self.work_dir_container), 'rw'),
                 (str(self.config_file), '/root/.pilotcli/config.ini', 'rw'),
             ],
-            entrypoint='/app/pilotcli',
+            entrypoint=str(self.work_dir_container / 'pilotcli'),
             command=command,
         )
 
