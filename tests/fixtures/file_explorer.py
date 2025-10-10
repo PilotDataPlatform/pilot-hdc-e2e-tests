@@ -114,13 +114,13 @@ class FileExplorer:
         popover = self.page.locator('div.ant-popover')
         successful_files = popover.get_by_role('heading').filter(has=self.page.get_by_alt_text('Approved'))
         expect(successful_files).to_have_count(len(names), timeout=timeout)
-        checked_files = set()
+        successful_filenames = set()
         for file in successful_files.all():
             file.hover()
             filename = self.page.locator('div.ant-tooltip-placement-top').get_by_role('tooltip').text_content()
             _, filename = filename.rsplit('/', 1)
-            checked_files.add(filename)
-        assert checked_files == set(names)
+            successful_filenames.add(filename)
+        assert set(names).issubset(successful_filenames)
         return self
 
     def wait_for_copy_to_core_completion(self, names: list[str]) -> Self:
