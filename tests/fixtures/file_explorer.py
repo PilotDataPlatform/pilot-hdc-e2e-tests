@@ -331,6 +331,8 @@ class FileExplorer:
         return self.upload_files(Files([file]))
 
     def upload_files(self, files: Files) -> Self:
+        self.clear_file_status_popover_session_history()
+
         self.page.get_by_role('button', name='upload Upload', exact=True).click()
 
         dialog = self.page.get_by_role('dialog')
