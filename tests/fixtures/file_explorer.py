@@ -134,6 +134,11 @@ class FileExplorer:
     def wait_for_copy_to_core_completion(self, names: list[str]) -> Self:
         return self.wait_for_action_completion('Approved', names)
 
+    def refresh(self) -> Self:
+        with self.wait_until_refreshed():
+            self.page.get_by_role('button', name='sync Refresh', exact=True).click()
+        return self
+
     def download(self, names: list[str]) -> Download:
         self.close_file_status_popover()
 

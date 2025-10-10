@@ -18,6 +18,7 @@ from playwright.sync_api import expect
 from pydantic import BaseModel
 from pytest import TempPathFactory
 from testcontainers.core.container import DockerContainer
+from testcontainers.core.wait_strategies import LogMessageWaitStrategy
 from testcontainers.core.waiting_utils import wait_for_logs
 
 
@@ -26,7 +27,7 @@ class Container(DockerContainer):
         stdout, _ = self.get_logs()
         return stdout.decode()
 
-    def wait_until_stopped(self, timeout: int = 10000) -> str:
+    def wait_until_stopped(self, *, timeout: int = 10000) -> str:
         wrapped = self.get_wrapped_container()
 
         start_time = tm.monotonic()
@@ -39,7 +40,7 @@ class Container(DockerContainer):
         raise TimeoutError(f'Container did not stop within {timeout} milliseconds.')
 
     def wait_for_logs(self, text: str, timeout: int = 10000) -> str:
-        wait_for_logs(self, text, timeout=timeout / 1000)
+        wait_for_logs(self, LogMessageWaitStrategy(text), timeout=timeout / 1000)
         return self.get_stdout()
 
 
