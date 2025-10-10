@@ -106,6 +106,14 @@ class FileExplorer:
         self.page.get_by_role('tab', name=tab).click()
         return self
 
+    def clear_file_status_popover_session_history(self) -> Self:
+        self.open_file_status_popover()
+        self.page.locator('div.ant-card').filter(has=self.page.get_by_text('Clear Session History')).get_by_role(
+            'img', name='close'
+        ).click()
+        self.close_file_status_popover()
+        return self
+
     def close_file_status_popover(self) -> Self:
         return self.toggle_file_status_popover(False)
 
@@ -120,7 +128,7 @@ class FileExplorer:
             filename = self.page.locator('div.ant-tooltip-placement-top').get_by_role('tooltip').text_content()
             _, filename = filename.rsplit('/', 1)
             successful_filenames.add(filename)
-        assert set(names).issubset(successful_filenames)
+        assert successful_filenames == set(names)
         return self
 
     def wait_for_copy_to_core_completion(self, names: list[str]) -> Self:

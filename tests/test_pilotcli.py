@@ -38,6 +38,7 @@ def test_file_is_successfully_downloaded_from_core_zone(
     file = File.generate()
     admin_file_explorer.upload_file_and_wait_until_uploaded(file)
 
+    admin_file_explorer.clear_file_status_popover_session_history()
     admin_file_explorer.copy_to_core([file.name], full_working_path)
     admin_file_explorer.wait_for_copy_to_core_completion([file.name])
 
