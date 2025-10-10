@@ -3,6 +3,7 @@
 # Licensed under the GNU AFFERO GENERAL PUBLIC LICENSE,
 # Version 3.0 (the "License") available at https://www.gnu.org/licenses/agpl-3.0.en.html.
 # You may not use this file except in compliance with the License.
+
 from pathlib import Path
 
 from playwright.sync_api import Page
@@ -78,7 +79,65 @@ def test_file_cannot_be_downloaded_from_greenroom_zone(
     with admin_pilotcli.run(
         f'file sync --zone greenroom {source_file_path} {admin_pilotcli.work_dir_container}'
     ) as container:
-        stdout = container.wait_until_stopped()
+        stdout = container.wait_until_stopped(timeout=5000)
 
         assert 'The data zone is invalid. Please verify the data location and try again.' in stdout
         assert not destination_file_path.exists()
+
+
+def test_file_is_successfully_uploaded_to_greenroom_zone(
+    admin_pilotcli: PilotCLI,
+    admin_file_explorer: FileExplorer,
+    working_path: Path,
+    project_code: str,
+    admin_username: str,
+) -> None:
+    """Test that a file can be uploaded to greenroom zone using pilotcli."""
+
+    full_working_path = working_path / 'pilotcli-upload'
+    admin_file_explorer.create_folders_and_navigate_to(full_working_path)
+
+    admin_pilotcli.login(admin_file_explorer.page)
+
+    file = File.generate()
+    file.save_to_folder(admin_pilotcli.work_dir)
+    source_file_path = admin_pilotcli.work_dir_container / file.name
+    destination_file_path = f'{project_code}/{admin_username}' / full_working_path
+
+    with admin_pilotcli.run(
+        f'file upload --zone greenroom --project-path {destination_file_path} {source_file_path}'
+    ) as container:
+        stdout = container.wait_until_stopped(timeout=20000)
+
+        assert 'All uploading jobs have finished' in stdout
+
+    admin_file_explorer.create_folders_and_navigate_to(full_working_path)
+    file_content = admin_file_explorer.download_and_get_content([file.name])
+
+    assert file_content == file.content
+
+
+def test_file_cannot_be_uploaded_to_core_zone(
+    admin_pilotcli: PilotCLI,
+    admin_file_explorer: FileExplorer,
+    working_path: Path,
+    project_code: str,
+    admin_username: str,
+) -> None:
+    """Test that a file cannot be uploaded to core zone using pilotcli."""
+
+    full_working_path = working_path / 'pilotcli-upload'
+
+    admin_pilotcli.login(admin_file_explorer.page)
+
+    file = File.generate()
+    file.save_to_folder(admin_pilotcli.work_dir)
+    source_file_path = admin_pilotcli.work_dir_container / file.name
+    destination_file_path = f'{project_code}/{admin_username}' / full_working_path
+
+    with admin_pilotcli.run(
+        f'file upload --zone core --project-path {destination_file_path} {source_file_path}'
+    ) as container:
+        stdout = container.wait_until_stopped(timeout=5000)
+
+        assert 'The data zone is invalid. Please verify the data location and try again.' in stdout
