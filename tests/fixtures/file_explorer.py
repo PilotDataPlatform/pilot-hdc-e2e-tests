@@ -101,11 +101,38 @@ class FileExplorer:
             menuitem.click()
         return self
 
-    def open_file_status_popover(self) -> Self:
-        return self.toggle_file_status_popover(True)
+    def open_file_status_popover(self, tab: str = 'In Progress') -> Self:
+        self.toggle_file_status_popover(True)
+        self.page.get_by_role('tab', name=tab).click()
+        return self
+
+    def clear_file_status_popover_session_history(self) -> Self:
+        self.open_file_status_popover()
+        self.page.locator('div.ant-card').filter(has=self.page.get_by_text('Clear Session History')).get_by_role(
+            'img', name='close'
+        ).click()
+        self.close_file_status_popover()
+        return self
 
     def close_file_status_popover(self) -> Self:
         return self.toggle_file_status_popover(False)
+
+    def wait_for_action_completion(self, tab: str, names: list[str], timeout: int = 10000) -> Self:
+        self.open_file_status_popover(tab)
+        popover = self.page.locator('div.ant-popover')
+        successful_files = popover.get_by_role('heading').filter(has=self.page.get_by_alt_text('Approved'))
+        expect(successful_files).to_have_count(len(names), timeout=timeout)
+        successful_filenames = set()
+        for file in successful_files.all():
+            file.hover()
+            filename = self.page.locator('div.ant-tooltip-placement-top').get_by_role('tooltip').text_content()
+            _, filename = filename.rsplit('/', 1)
+            successful_filenames.add(filename)
+        assert successful_filenames == set(names)
+        return self
+
+    def wait_for_copy_to_core_completion(self, names: list[str]) -> Self:
+        return self.wait_for_action_completion('Approved', names)
 
     def download(self, names: list[str]) -> Download:
         self.close_file_status_popover()
@@ -304,6 +331,8 @@ class FileExplorer:
         return self.upload_files(Files([file]))
 
     def upload_files(self, files: Files) -> Self:
+        self.clear_file_status_popover_session_history()
+
         self.page.get_by_role('button', name='upload Upload', exact=True).click()
 
         dialog = self.page.get_by_role('dialog')

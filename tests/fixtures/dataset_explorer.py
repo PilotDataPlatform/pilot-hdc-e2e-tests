@@ -123,10 +123,10 @@ class DatasetExplorer:
 
         return self
 
-    def wait_for_action_completion(self, tab: str, names: list[str]) -> Self:
+    def wait_for_action_completion(self, tab: str, names: list[str], timeout: int = 10000) -> Self:
         self.open_dataset_status_popover(tab)
         for name in names:
-            expect(self.page.get_by_role('tabpanel')).to_contain_text(f'{name} - Succeed')
+            expect(self.page.get_by_role('tabpanel')).to_contain_text(f'{name} - Succeed', timeout=timeout)
         self.page.get_by_role('menuitem', name='Home').click()
         with self.wait_until_refreshed():
             self.page.get_by_role('menuitem', name='Explorer').click()
