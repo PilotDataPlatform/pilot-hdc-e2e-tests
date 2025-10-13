@@ -11,6 +11,7 @@ import zipfile
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import IO
 from typing import Annotated
 from typing import Self
 
@@ -161,8 +162,10 @@ class FileExplorer:
 
     def download_and_extract_files(self, names: list[str]) -> Generator[File]:
         file_content = self.download_and_get_content(names)
+        return self.extract_files(io.BytesIO(file_content))
 
-        with zipfile.ZipFile(io.BytesIO(file_content)) as zf:
+    def extract_files(self, zip_file: Path | IO[bytes]) -> Generator[File]:
+        with zipfile.ZipFile(zip_file) as zf:
             for fileinfo in zf.infolist():
                 if fileinfo.is_dir():
                     continue

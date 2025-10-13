@@ -39,9 +39,10 @@ def test_add_file_to_dataset(
     admin_dataset_explorer.create_dataset(dataset)
 
     full_working_path = working_path / 'files-for-dataset'
+    admin_file_explorer.create_folders_in_greenroom_and_core(full_working_path)
+
     file = File.generate()
-    admin_file_explorer.create_folders_and_upload_file_to(file, full_working_path).switch_to_core()
-    admin_file_explorer.create_folders_and_navigate_to(full_working_path).switch_to_green_room()
+    admin_file_explorer.upload_file_and_wait_until_uploaded(file)
     admin_file_explorer.copy_to_core([file.name], full_working_path).switch_to_core()
     admin_file_explorer.add_to_dataset([file.name], dataset.code)
     admin_dataset_explorer.open(dataset.code).wait_for_import_completion([file.name])
