@@ -181,5 +181,5 @@ def test_dataset_contents_is_successfully_downloaded(
     dataset_file_path = admin_pilotcli.work_dir / Path(match.group(1)).name
     received_files = list(admin_file_explorer.extract_files(dataset_file_path))
 
-    assert len(received_files) == 2
+    assert len(received_files) == 2  # 2nd file here is default_essential.schema.json
     assert file.hash in {f.hash for f in received_files}
