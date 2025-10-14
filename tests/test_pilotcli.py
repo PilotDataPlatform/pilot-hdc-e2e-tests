@@ -13,6 +13,7 @@ from tests.fixtures.dataset_explorer import Dataset
 from tests.fixtures.dataset_explorer import DatasetExplorer
 from tests.fixtures.file_explorer import File
 from tests.fixtures.file_explorer import FileExplorer
+from tests.fixtures.file_explorer import Files
 from tests.fixtures.pilotcli import PilotCLI
 
 
@@ -159,12 +160,10 @@ def test_dataset_contents_is_successfully_downloaded(
     admin_dataset_explorer.create_dataset(dataset)
 
     full_working_path = working_path / 'pilotcli-dataset'
-    admin_file_explorer.create_folders_in_greenroom_and_core(full_working_path)
-
     file = File.generate()
-    admin_file_explorer.upload_file_and_wait_until_uploaded(file)
-    admin_file_explorer.copy_to_core([file.name], full_working_path).switch_to_core()
-    admin_file_explorer.add_to_dataset([file.name], dataset.code)
+    admin_file_explorer.create_folders_and_upload_files_and_add_to_dataset(
+        full_working_path, Files([file]), dataset.code
+    )
     admin_dataset_explorer.open(dataset.code).wait_for_import_completion([file.name])
 
     admin_pilotcli.login(admin_file_explorer.page)

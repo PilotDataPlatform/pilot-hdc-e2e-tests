@@ -1,6 +1,6 @@
 [project]
 name = "e2e-tests"
-version = "0.1.24"
+version = "0.1.25"
 description = "Pilot-HDC end-to-end tests."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"

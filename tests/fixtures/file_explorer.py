@@ -257,6 +257,15 @@ class FileExplorer:
         self.create_folders_and_navigate_to(folder_path).switch_to_green_room()
         return self
 
+    def create_folders_and_upload_files_and_add_to_dataset(
+        self, folder_path: Path, files: Files, dataset_code: str
+    ) -> Self:
+        self.create_folders_in_greenroom_and_core(folder_path)
+        self.upload_files_and_wait_until_uploaded(files)
+        self.copy_to_core(files.names, folder_path).switch_to_core()
+        self.add_to_dataset(files.names, dataset_code)
+        return self
+
     def wait_for_stable_count(
         self, locator: Locator, interval: int = 350, timeout: int = 5000, max_stable_rounds: int = 5
     ) -> Self:
