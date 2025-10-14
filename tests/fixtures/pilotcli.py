@@ -14,6 +14,7 @@ from uuid import uuid4
 import pytest
 import requests
 from playwright.sync_api import Page
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 from pydantic import BaseModel
 from pytest import TempPathFactory
@@ -37,7 +38,7 @@ class Container(DockerContainer):
                 return self.get_stdout()
             tm.sleep(0.5)
 
-        raise TimeoutError(f'Container did not stop within {timeout} milliseconds.')
+        raise PlaywrightTimeoutError(f'Container did not stop within {timeout} milliseconds.')
 
     def wait_for_logs(self, text: str, timeout: int = 10000) -> str:
         wait_for_logs(self, LogMessageWaitStrategy(text), timeout=timeout / 1000)

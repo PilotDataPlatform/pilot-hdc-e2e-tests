@@ -39,12 +39,10 @@ def test_add_file_to_dataset(
     admin_dataset_explorer.create_dataset(dataset)
 
     full_working_path = working_path / 'files-for-dataset'
-    admin_file_explorer.create_folders_in_greenroom_and_core(full_working_path)
-
     file = File.generate()
-    admin_file_explorer.upload_file_and_wait_until_uploaded(file)
-    admin_file_explorer.copy_to_core([file.name], full_working_path).switch_to_core()
-    admin_file_explorer.add_to_dataset([file.name], dataset.code)
+    admin_file_explorer.create_folders_and_upload_files_and_add_to_dataset(
+        full_working_path, Files([file]), dataset.code
+    )
     admin_dataset_explorer.open(dataset.code).wait_for_import_completion([file.name])
 
     explorer_tree = admin_page.locator('div.ant-tree-list-holder-inner')
@@ -106,12 +104,8 @@ def test_new_folder_and_file_move_in_dataset(
     admin_dataset_explorer.create_dataset(dataset)
 
     full_working_path = working_path / 'files-for-dataset'
-    admin_file_explorer.create_folders_in_greenroom_and_core(full_working_path)
-
     files = Files.generate(2)
-    admin_file_explorer.upload_files_and_wait_until_uploaded(files)
-    admin_file_explorer.copy_to_core(files.names, full_working_path).switch_to_core()
-    admin_file_explorer.add_to_dataset(files.names, dataset.code)
+    admin_file_explorer.create_folders_and_upload_files_and_add_to_dataset(full_working_path, files, dataset.code)
     admin_dataset_explorer.open(dataset.code).wait_for_import_completion(files.names)
 
     file_to_move = files[0]
@@ -127,3 +121,46 @@ def test_new_folder_and_file_move_in_dataset(
         'span.ant-tree-switcher'
     ).click()
     expect(explorer_tree).to_contain_text(file_to_move.name)
+
+
+def test_dataset_release_and_download(
+    admin_dataset_explorer: DatasetExplorer,
+    admin_file_explorer: FileExplorer,
+    admin_page: Page,
+    project_code: str,
+    working_path: Path,
+    fake: Fake,
+) -> None:
+    """Test that a new version of a dataset can be released and then downloaded."""
+
+    dataset = Dataset.generate(project_code=project_code)
+    admin_dataset_explorer.create_dataset(dataset)
+
+    full_working_path = working_path / 'files-for-dataset'
+    file = File.generate()
+    admin_file_explorer.create_folders_and_upload_files_and_add_to_dataset(
+        full_working_path, Files([file]), dataset.code
+    )
+    admin_dataset_explorer.open(dataset.code).wait_for_import_completion([file.name])
+
+    admin_page.get_by_role('button', name='Release New Version').click()
+    admin_page.get_by_role('radio', name='Major Release').check()
+    admin_page.locator('#notes').fill('v1.0')
+    admin_page.get_by_role('button', name='Submit').click()
+
+    versions_button = admin_page.locator('div.ant-page-header-heading').get_by_text('Versions', exact=True)
+    versions_button.click()
+
+    dialog = admin_page.get_by_role('dialog')
+    download_button = dialog.get_by_role('button', name='Download')
+    for _ in admin_dataset_explorer.wait_with_retries(lambda: download_button.is_visible()):
+        dialog.get_by_role('button', name='Close').click()
+        versions_button.click()
+
+    with admin_page.expect_download() as download_info:
+        download_button.click()
+
+    received_files = list(admin_file_explorer.extract_files(download_info.value.path()))
+
+    assert len(received_files) == 2  # 2nd file here is default_essential.schema.json
+    assert file.hash in {f.hash for f in received_files}
