@@ -4,10 +4,13 @@
 # Version 3.0 (the "License") available at https://www.gnu.org/licenses/agpl-3.0.en.html.
 # You may not use this file except in compliance with the License.
 
+import re
 from pathlib import Path
 
 from playwright.sync_api import Page
 
+from tests.fixtures.dataset_explorer import Dataset
+from tests.fixtures.dataset_explorer import DatasetExplorer
 from tests.fixtures.file_explorer import File
 from tests.fixtures.file_explorer import FileExplorer
 from tests.fixtures.pilotcli import PilotCLI
@@ -141,3 +144,42 @@ def test_file_cannot_be_uploaded_to_core_zone(
         stdout = container.wait_until_stopped(timeout=5000)
 
         assert 'The data zone is invalid. Please verify the data location and try again.' in stdout
+
+
+def test_dataset_contents_is_successfully_downloaded(
+    admin_pilotcli: PilotCLI,
+    admin_file_explorer: FileExplorer,
+    admin_dataset_explorer: DatasetExplorer,
+    working_path: Path,
+    project_code: str,
+) -> None:
+    """Test that the contents of a dataset can be downloaded using pilotcli."""
+
+    dataset = Dataset.generate(project_code=project_code)
+    admin_dataset_explorer.create_dataset(dataset)
+
+    full_working_path = working_path / 'pilotcli-dataset'
+    admin_file_explorer.create_folders_in_greenroom_and_core(full_working_path)
+
+    file = File.generate()
+    admin_file_explorer.upload_file_and_wait_until_uploaded(file)
+    admin_file_explorer.copy_to_core([file.name], full_working_path).switch_to_core()
+    admin_file_explorer.add_to_dataset([file.name], dataset.code)
+    admin_dataset_explorer.open(dataset.code).wait_for_import_completion([file.name])
+
+    admin_pilotcli.login(admin_file_explorer.page)
+
+    with admin_pilotcli.run(f'dataset download {dataset.code} {admin_pilotcli.work_dir_container}') as container:
+        stdout = container.wait_until_stopped(timeout=20000)
+
+        assert 'File has been downloaded successfully and saved to:' in stdout
+
+    match = re.search(r'to: (\S+)', stdout)
+    if not match:
+        raise ValueError('Dataset file path not found')
+
+    dataset_file_path = admin_pilotcli.work_dir / Path(match.group(1)).name
+    received_files = list(admin_file_explorer.extract_files(dataset_file_path))
+
+    assert len(received_files) == 2  # 2nd file here is default_essential.schema.json
+    assert file.hash in {f.hash for f in received_files}
