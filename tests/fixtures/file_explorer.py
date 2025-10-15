@@ -7,13 +7,16 @@
 import hashlib
 import io
 import os
+import time as tm
 import zipfile
+from collections.abc import Callable
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import IO
 from typing import Annotated
 from typing import Self
+from typing import TypeVar
 
 import pytest
 from annotated_types import Len
@@ -26,6 +29,8 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 from pydantic import BaseModel
 from pydantic import RootModel
+
+T = TypeVar('T', bound=BaseModel)
 
 
 class FileAttribute(BaseModel):
@@ -57,10 +62,15 @@ class File(BaseModel):
         return file_path
 
 
-class Files(RootModel[Annotated[list[File], Len(min_length=1)]]):
-    def __getitem__(self, item: int) -> File:
+class ListModel(RootModel[Annotated[list[T], Len(min_length=1)]]):
+    def __getitem__(self, item: int) -> T:
         return self.root[item]
 
+    def __iter__(self) -> Generator[T]:  # type: ignore[override]
+        yield from self.root
+
+
+class Files(ListModel[File]):
     @property
     def tags(self) -> list[str]:
         return self[0].tags
@@ -71,13 +81,11 @@ class Files(RootModel[Annotated[list[File], Len(min_length=1)]]):
 
     @property
     def names(self) -> list[str]:
-        return [file.name for file in self.root]
+        return [file.name for file in self]
 
     @property
     def payloads(self) -> list[FilePayload]:
-        return [
-            FilePayload(name=file.name, mimeType='application/octet-stream', buffer=file.content) for file in self.root
-        ]
+        return [FilePayload(name=file.name, mimeType='application/octet-stream', buffer=file.content) for file in self]
 
     @classmethod
     def generate(cls, number: int) -> Self:
@@ -285,6 +293,23 @@ class FileExplorer:
             elapsed_time += interval
 
         return self
+
+    def wait_with_retries(
+        self, function: Callable[[], bool], *, retries: int = 10, timeout: int = 10000, interval: int = 1000
+    ) -> Generator[int]:
+        start_time = tm.monotonic()
+        attempt = 1
+        while attempt <= retries and (tm.monotonic() - start_time) * 1000 < timeout:
+            if function():
+                return
+            attempt += 1
+            yield attempt
+            tm.sleep(interval / 1000)
+
+        if function():
+            return
+
+        raise PlaywrightTimeoutError(f'Locator not visible after {retries} retries within {timeout} milliseconds.')
 
     def switch_to_tab(self, class_name: str, tab_title: str) -> Self:
         self.page.get_by_role('tree').locator(f':scope.{class_name}').get_by_title('Home').click()

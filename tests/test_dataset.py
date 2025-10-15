@@ -129,7 +129,6 @@ def test_dataset_release_and_download(
     admin_page: Page,
     project_code: str,
     working_path: Path,
-    fake: Fake,
 ) -> None:
     """Test that a new version of a dataset can be released and then downloaded."""
 
@@ -143,17 +142,14 @@ def test_dataset_release_and_download(
     )
     admin_dataset_explorer.open(dataset.code).wait_for_import_completion([file.name])
 
-    admin_page.get_by_role('button', name='Release New Version').click()
-    admin_page.get_by_role('radio', name='Major Release').check()
-    admin_page.locator('#notes').fill('v1.0')
-    admin_page.get_by_role('button', name='Submit').click()
+    admin_dataset_explorer.create_release()
 
     versions_button = admin_page.locator('div.ant-page-header-heading').get_by_text('Versions', exact=True)
     versions_button.click()
 
     dialog = admin_page.get_by_role('dialog')
     download_button = dialog.get_by_role('button', name='Download')
-    for _ in admin_dataset_explorer.wait_with_retries(lambda: download_button.is_visible()):
+    for _ in admin_file_explorer.wait_with_retries(lambda: download_button.is_visible()):
         dialog.get_by_role('button', name='Close').click()
         versions_button.click()
 
@@ -164,3 +160,38 @@ def test_dataset_release_and_download(
 
     assert len(received_files) == 2  # 2nd file here is default_essential.schema.json
     assert file.hash in {f.hash for f in received_files}
+
+
+def test_dataset_activity_log(
+    admin_dataset_explorer: DatasetExplorer,
+    admin_file_explorer: FileExplorer,
+    admin_page: Page,
+    project_code: str,
+    working_path: Path,
+) -> None:
+    """Test that dataset activities are listed in the activity log."""
+
+    dataset = Dataset.generate(project_code=project_code)
+    admin_dataset_explorer.create_dataset(dataset)
+
+    full_working_path = working_path / 'files-for-dataset'
+    files = Files.generate(2)
+    admin_file_explorer.create_folders_and_upload_files_and_add_to_dataset(full_working_path, files, dataset.code)
+    admin_dataset_explorer.open(dataset.code).wait_for_import_completion(files.names)
+
+    admin_dataset_explorer.create_release()
+
+    activity_button = admin_page.get_by_role('menuitem', name='Activity')
+    activity_button.click()
+
+    for _ in admin_file_explorer.wait_with_retries(lambda: admin_page.locator('tbody > tr').count() > 3):
+        admin_page.get_by_role('menuitem', name='Home').click()
+        with admin_page.expect_response(lambda r: f'v1/activity-logs/{dataset.code}' in r.url):
+            activity_button.click()
+
+    activity_table = admin_page.locator('[class*=DatasetActivity_dataset_activity]')
+    expect(activity_table).to_be_visible()
+    expect(activity_table).to_contain_text('Created a Dataset')
+    for file in files:
+        expect(activity_table).to_contain_text(f'Added file(s): {file.name} from Project {project_code}')
+    expect(activity_table).to_contain_text('Version 1.0')
