@@ -21,8 +21,6 @@ def test_search_uploaded_file_by_exact_name(
     file = File.generate()
     admin_file_explorer.create_folders_and_upload_file_to(file, working_path / 'file-search')
 
-    admin_page.wait_for_timeout(5000)  # Wait for the file info to be transferred to the Elasticsearch
-
     admin_page.get_by_role('menuitem', name='Search').click()
 
     admin_page.locator('div.ant-select').filter(has=admin_page.get_by_role('combobox')).click()
@@ -32,6 +30,8 @@ def test_search_uploaded_file_by_exact_name(
     admin_page.locator('div.ant-select-dropdown').get_by_title('Equals').click()
 
     admin_page.locator('#fileNameKeyword').fill(file.name)
-    admin_page.get_by_role('button', name='search').click()
+
+    for _ in admin_file_explorer.wait_with_retries(lambda: admin_page.locator('span.file-name-val').count() > 0):
+        admin_page.get_by_role('button', name='search').click()
 
     expect(admin_page.locator('span.file-name-val').get_by_text(file.name)).to_have_count(1)

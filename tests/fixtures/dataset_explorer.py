@@ -5,8 +5,6 @@
 # You may not use this file except in compliance with the License.
 
 import os
-import time as tm
-from collections.abc import Callable
 from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Annotated
@@ -16,7 +14,6 @@ import pytest
 from annotated_types import Len
 from playwright.sync_api import Locator
 from playwright.sync_api import Page
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 from pydantic import BaseModel
 
@@ -106,6 +103,13 @@ class DatasetExplorer:
 
         return self
 
+    def create_release(self, notes: str = 'v1.0') -> Self:
+        self.page.get_by_role('button', name='Release New Version').click()
+        self.page.get_by_role('radio', name='Major Release').check()
+        self.page.locator('#notes').fill(notes)
+        self.page.get_by_role('button', name='Submit').click()
+        return self
+
     def locate_row(self, name: str) -> Locator:
         return (
             self.page.get_by_role('tree')
@@ -140,23 +144,6 @@ class DatasetExplorer:
 
     def wait_for_move_completion(self, names: list[str]) -> Self:
         return self.wait_for_action_completion('Move', names)
-
-    def wait_with_retries(
-        self, function: Callable[[], bool], *, retries: int = 10, timeout: int = 10000
-    ) -> Generator[int]:
-        start_time = tm.monotonic()
-        attempt = 1
-        while attempt <= retries and (tm.monotonic() - start_time) * 1000 < timeout:
-            if function():
-                return
-            attempt += 1
-            yield attempt
-            tm.sleep(0.5)
-
-        if function():
-            return
-
-        raise PlaywrightTimeoutError(f'Locator not visible after {retries} retries within {timeout} milliseconds.')
 
     @contextmanager
     def wait_until_refreshed(self) -> Generator[None]:
