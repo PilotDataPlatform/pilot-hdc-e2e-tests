@@ -192,6 +192,6 @@ def test_dataset_activity_log(
     activity_table = admin_page.locator('[class*=DatasetActivity_dataset_activity]')
     expect(activity_table).to_be_visible()
     expect(activity_table).to_contain_text('Created a Dataset')
-    for _, file in files:
+    for file in files:
         expect(activity_table).to_contain_text(f'Added file(s): {file.name} from Project {project_code}')
     expect(activity_table).to_contain_text('Version 1.0')
