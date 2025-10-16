@@ -4,6 +4,10 @@
 # Version 3.0 (the "License") available at https://www.gnu.org/licenses/agpl-3.0.en.html.
 # You may not use this file except in compliance with the License.
 
+from playwright.sync_api import expect
+
+expect.set_options(timeout=10000)
+
 pytest_plugins = [
     'tests.fixtures.context',
     'tests.fixtures.dataset_explorer',

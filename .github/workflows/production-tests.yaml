@@ -1,4 +1,4 @@
-name: HDC E2E Tests
+name: HDC Production E2E Tests
 
 on:
   schedule:
@@ -55,5 +55,5 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           wget --quiet --method=POST --header="Content-Type: application/json" \
-          --body-data='{"text":"E2E tests failed. Check logs for details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+          --body-data='{"text":"Production E2E tests failed. Check logs for details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
           "$SLACK_WEBHOOK_URL"
