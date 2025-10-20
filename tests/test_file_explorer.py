@@ -84,7 +84,7 @@ def test_folder_upload_and_download(
     file_2 = File.generate()
     file_2.save_to_folder(folder_path)
 
-    with admin_file_explorer.wait_until_uploaded([file_1.name, file_2.name]):
+    with admin_file_explorer.wait_until_uploaded_and_refreshed([file_1.name, file_2.name]):
         admin_file_explorer.upload_folder(folder_path)
 
     received_files = list(admin_file_explorer.download_and_extract_files([folder_name]))
@@ -112,7 +112,7 @@ def test_file_resumable_upload_and_download(
     admin_file_explorer.open_file_status_popover()
     first_file_status_line = admin_page.get_by_role('heading', name=re.compile(r'Re-upload file')).first
 
-    with admin_file_explorer.wait_until_uploaded([file.name], wait_for_refresh=False):
+    with admin_file_explorer.wait_until_uploaded([file.name]):
         first_file_status_line.locator('input[type="file"]').set_input_files(
             FilePayload(name=file.name, mimeType='application/octet-stream', buffer=file.content)
         )
