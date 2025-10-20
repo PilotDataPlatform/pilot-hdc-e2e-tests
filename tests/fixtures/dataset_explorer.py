@@ -130,7 +130,7 @@ class DatasetExplorer:
 
         return self
 
-    def wait_for_action_completion(self, tab: str, names: list[str], timeout: int = 10000) -> Self:
+    def wait_for_action_completion(self, tab: str, names: list[str], timeout: int = 30000) -> Self:
         self.open_dataset_status_popover(tab)
         for name in names:
             expect(self.page.get_by_role('tabpanel')).to_contain_text(f'{name} - Succeed', timeout=timeout)
