@@ -408,12 +408,12 @@ class FileExplorer:
         return self
 
     def upload_file_and_wait_until_uploaded(self, file: File) -> Self:
-        with self.wait_until_uploaded([file.name]):
+        with self.wait_until_uploaded_and_refreshed([file.name]):
             self.upload_file(file)
         return self
 
     def upload_files_and_wait_until_uploaded(self, files: Files) -> Self:
-        with self.wait_until_uploaded(files.names):
+        with self.wait_until_uploaded_and_refreshed(files.names):
             self.upload_files(files)
         return self
 
@@ -428,7 +428,7 @@ class FileExplorer:
         self.page.get_by_role('button', name='cloud-upload Upload', exact=True).click()
 
     @contextmanager
-    def wait_until_uploaded(self, names: list[str], wait_for_refresh: bool = True) -> Generator[None]:
+    def wait_until_uploaded(self, names: list[str]) -> Generator[None]:
         files_to_upload = set(names)
 
         def check_response(response: Response) -> bool:
@@ -437,21 +437,32 @@ class FileExplorer:
                 if filename in files_to_upload:
                     files_to_upload.remove(filename)
 
-            if files_to_upload:
-                return False
-
-            if not wait_for_refresh:
-                return True
-
-            return 'v1/files/meta?' in response.url
+            return len(files_to_upload) == 0
 
         with self.page.expect_response(check_response):
             yield
+
+        self.close_file_status_popover()
 
     @contextmanager
     def wait_until_refreshed(self) -> Generator[None]:
         with self.page.expect_response(lambda r: 'v1/files/meta?' in r.url and 'order_by=created_time' in r.url):
             yield
+
+    @contextmanager
+    def wait_until_uploaded_and_refreshed(
+        self, names: list[str], refresh_after_upload: bool | None = None
+    ) -> Generator[None]:
+        if refresh_after_upload is None:
+            refresh_after_upload = len(names) > 1
+
+        with self.wait_until_refreshed():
+            with self.wait_until_uploaded(names):
+                yield
+
+        if refresh_after_upload:
+            expect(self.page.locator('div.ant-spin-blur')).to_have_count(0)
+            self.refresh()
 
     def select_path_in_dialog_tree(self, dialog: Locator, folder_path: Path, start_level: int = 3) -> Self:
         path_parts = list(folder_path.parts)

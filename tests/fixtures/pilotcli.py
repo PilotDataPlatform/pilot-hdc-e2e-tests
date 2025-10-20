@@ -9,6 +9,7 @@ import shutil
 import time as tm
 from pathlib import Path
 from typing import Self
+from urllib.parse import urlparse
 from uuid import uuid4
 
 import pytest
@@ -48,12 +49,25 @@ class Container(DockerContainer):
 class PilotCLI(BaseModel):
     work_dir: Path
     work_dir_container: Path = Path('/app')
+    base_url: str
 
     @property
     def config_file(self) -> Path:
         config_file = self.work_dir / 'config.ini'
         config_file.touch(0o600)
         return config_file
+
+    @property
+    def env(self) -> dict[str, str]:
+        domain = urlparse(self.base_url)
+        return {
+            'harbor_client_secret': str(uuid4()),
+            'keycloak_device_client_id': 'cli',
+            'base_url': f'https://api.{domain.netloc}/pilot/',
+            'url_harbor': 'https://127.0.0.1',
+            'url_bff': f'https://api.{domain.netloc}/pilot/cli',
+            'url_keycloak': f'https://iam.{domain.netloc}/realms/hdc/protocol/openid-connect',
+        }
 
     def login(self, page: Page) -> Self:
         with self.run('user login') as container:
@@ -76,14 +90,7 @@ class PilotCLI(BaseModel):
             image='ubuntu:noble',
             platform='linux/amd64',
             working_dir=str(self.work_dir_container),
-            env={
-                'harbor_client_secret': str(uuid4()),
-                'keycloak_device_client_id': 'cli',
-                'base_url': 'https://api.hdc.humanbrainproject.eu/pilot/',
-                'url_harbor': 'https://127.0.0.1',
-                'url_bff': 'https://api.hdc.humanbrainproject.eu/pilot/cli',
-                'url_keycloak': 'https://iam.hdc.humanbrainproject.eu/realms/hdc/protocol/openid-connect',
-            },
+            env=self.env,
             volumes=[
                 (str(self.work_dir), str(self.work_dir_container), 'rw'),
                 (str(self.config_file), '/root/.pilotcli/config.ini', 'rw'),
@@ -109,9 +116,9 @@ def pilotcli_binary(pilotcli_version_tag: str, tmp_path_factory: TempPathFactory
 
 
 @pytest.fixture
-def admin_pilotcli(pilotcli_binary: Path, tmp_path_factory: TempPathFactory) -> PilotCLI:
+def admin_pilotcli(pilotcli_binary: Path, tmp_path_factory: TempPathFactory, base_url: str) -> PilotCLI:
     work_dir = tmp_path_factory.mktemp('admin_pilotcli')
     work_binary = work_dir / 'pilotcli'
     shutil.copyfile(pilotcli_binary, work_binary)
     work_binary.chmod(0o755)
-    return PilotCLI(work_dir=work_dir)
+    return PilotCLI(work_dir=work_dir, base_url=base_url)
