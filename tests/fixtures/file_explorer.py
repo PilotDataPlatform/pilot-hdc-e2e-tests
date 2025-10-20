@@ -428,7 +428,9 @@ class FileExplorer:
         self.page.get_by_role('button', name='cloud-upload Upload', exact=True).click()
 
     @contextmanager
-    def wait_until_uploaded(self, names: list[str], wait_for_refresh: bool = True) -> Generator[None]:
+    def wait_until_uploaded(
+        self, names: list[str], wait_for_refresh: bool = True, refresh_after_upload: bool = True
+    ) -> Generator[None]:
         files_to_upload = set(names)
 
         def check_response(response: Response) -> bool:
@@ -447,6 +449,10 @@ class FileExplorer:
 
         with self.page.expect_response(check_response):
             yield
+
+        if refresh_after_upload:
+            self.close_file_status_popover()
+            self.refresh()
 
     @contextmanager
     def wait_until_refreshed(self) -> Generator[None]:
