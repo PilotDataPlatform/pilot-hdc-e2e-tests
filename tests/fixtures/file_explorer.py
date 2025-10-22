@@ -408,12 +408,12 @@ class FileExplorer:
         return self
 
     def upload_file_and_wait_until_uploaded(self, file: File) -> Self:
-        with self.wait_until_uploaded_and_refreshed([file.name]):
+        with self.wait_until_uploaded_and_available([file.name]):
             self.upload_file(file)
         return self
 
     def upload_files_and_wait_until_uploaded(self, files: Files) -> Self:
-        with self.wait_until_uploaded_and_refreshed(files.names):
+        with self.wait_until_uploaded_and_available(files.names):
             self.upload_files(files)
         return self
 
@@ -450,17 +450,11 @@ class FileExplorer:
             yield
 
     @contextmanager
-    def wait_until_uploaded_and_refreshed(
-        self, names: list[str], refresh_after_upload: bool | None = None
-    ) -> Generator[None]:
-        if refresh_after_upload is None:
-            refresh_after_upload = len(names) > 1
+    def wait_until_uploaded_and_available(self, names: list[str]) -> Generator[None]:
+        with self.wait_until_uploaded(names):
+            yield
 
-        with self.wait_until_refreshed():
-            with self.wait_until_uploaded(names):
-                yield
-
-        if refresh_after_upload:
+        for _ in self.wait_with_retries(lambda: all(self.locate_row(name).is_visible() for name in names)):
             expect(self.page.locator('div.ant-spin-blur')).to_have_count(0)
             self.refresh()
 

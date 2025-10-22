@@ -75,7 +75,7 @@ def test_add_folder_with_files_to_dataset(
     file_2 = File.generate()
     file_2.save_to_folder(folder_path)
 
-    with admin_file_explorer.wait_until_uploaded_and_refreshed([file_1.name, file_2.name]):
+    with admin_file_explorer.wait_until_uploaded_and_available([file_1.name, file_2.name]):
         admin_file_explorer.upload_folder(folder_path)
 
     admin_file_explorer.copy_to_core([folder_name], full_working_path).switch_to_core()

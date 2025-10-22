@@ -84,7 +84,7 @@ def test_folder_upload_and_download(
     file_2 = File.generate()
     file_2.save_to_folder(folder_path)
 
-    with admin_file_explorer.wait_until_uploaded_and_refreshed([file_1.name, file_2.name]):
+    with admin_file_explorer.wait_until_uploaded_and_available([file_1.name, file_2.name]):
         admin_file_explorer.upload_folder(folder_path)
 
     received_files = list(admin_file_explorer.download_and_extract_files([folder_name]))
