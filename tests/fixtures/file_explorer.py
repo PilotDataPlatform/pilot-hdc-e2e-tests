@@ -258,7 +258,7 @@ class FileExplorer:
 
     def create_folders_and_upload_file_to(self, file: File, folder_path: Path) -> Self:
         self.create_folders_and_navigate_to(folder_path)
-        return self.upload_file_and_wait_until_uploaded(file)
+        return self.upload_file_and_wait_until_uploaded_and_available(file)
 
     def create_folders_in_greenroom_and_core(self, folder_path: Path) -> Self:
         self.create_folders_and_navigate_to(folder_path).switch_to_core()
@@ -269,7 +269,7 @@ class FileExplorer:
         self, folder_path: Path, files: Files, dataset_code: str
     ) -> Self:
         self.create_folders_in_greenroom_and_core(folder_path)
-        self.upload_files_and_wait_until_uploaded(files)
+        self.upload_files_and_wait_until_uploaded_and_available(files)
         self.copy_to_core(files.names, folder_path).switch_to_core()
         self.add_to_dataset(files.names, dataset_code)
         return self
@@ -407,12 +407,12 @@ class FileExplorer:
 
         return self
 
-    def upload_file_and_wait_until_uploaded(self, file: File) -> Self:
+    def upload_file_and_wait_until_uploaded_and_available(self, file: File) -> Self:
         with self.wait_until_uploaded_and_available([file.name]):
             self.upload_file(file)
         return self
 
-    def upload_files_and_wait_until_uploaded(self, files: Files) -> Self:
+    def upload_files_and_wait_until_uploaded_and_available(self, files: Files) -> Self:
         with self.wait_until_uploaded_and_available(files.names):
             self.upload_files(files)
         return self

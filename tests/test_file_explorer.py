@@ -84,7 +84,7 @@ def test_folder_upload_and_download(
     file_2 = File.generate()
     file_2.save_to_folder(folder_path)
 
-    with admin_file_explorer.wait_until_uploaded_and_available([file_1.name, file_2.name]):
+    with admin_file_explorer.wait_until_uploaded([file_1.name, file_2.name]):
         admin_file_explorer.upload_folder(folder_path)
 
     received_files = list(admin_file_explorer.download_and_extract_files([folder_name]))
@@ -131,7 +131,7 @@ def test_file_with_tags_copy_to_core_zone(admin_file_explorer: FileExplorer, wor
     admin_file_explorer.create_folders_in_greenroom_and_core(full_working_path)
 
     file = File.generate(tags_number=3)
-    admin_file_explorer.upload_file_and_wait_until_uploaded(file)
+    admin_file_explorer.upload_file_and_wait_until_uploaded_and_available(file)
 
     admin_file_explorer.copy_to_core([file.name], full_working_path).switch_to_core()
 
