@@ -41,7 +41,7 @@ def test_file_is_successfully_downloaded_from_core_zone(
     admin_file_explorer.create_folders_in_greenroom_and_core(full_working_path)
 
     file = File.generate()
-    admin_file_explorer.upload_file_and_wait_until_uploaded(file)
+    admin_file_explorer.upload_file_and_wait_until_uploaded_and_available(file)
 
     admin_file_explorer.copy_to_core([file.name], full_working_path)
     admin_file_explorer.wait_for_copy_to_core_completion([file.name])
@@ -73,7 +73,7 @@ def test_file_cannot_be_downloaded_from_greenroom_zone(
     admin_file_explorer.create_folders_and_navigate_to(full_working_path)
 
     file = File.generate()
-    admin_file_explorer.upload_file_and_wait_until_uploaded(file)
+    admin_file_explorer.upload_file_and_wait_until_uploaded_and_available(file)
 
     admin_pilotcli.login(admin_file_explorer.page)
 

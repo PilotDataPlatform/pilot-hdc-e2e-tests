@@ -258,7 +258,7 @@ class FileExplorer:
 
     def create_folders_and_upload_file_to(self, file: File, folder_path: Path) -> Self:
         self.create_folders_and_navigate_to(folder_path)
-        return self.upload_file_and_wait_until_uploaded(file)
+        return self.upload_file_and_wait_until_uploaded_and_available(file)
 
     def create_folders_in_greenroom_and_core(self, folder_path: Path) -> Self:
         self.create_folders_and_navigate_to(folder_path).switch_to_core()
@@ -269,7 +269,7 @@ class FileExplorer:
         self, folder_path: Path, files: Files, dataset_code: str
     ) -> Self:
         self.create_folders_in_greenroom_and_core(folder_path)
-        self.upload_files_and_wait_until_uploaded(files)
+        self.upload_files_and_wait_until_uploaded_and_available(files)
         self.copy_to_core(files.names, folder_path).switch_to_core()
         self.add_to_dataset(files.names, dataset_code)
         return self
@@ -407,13 +407,13 @@ class FileExplorer:
 
         return self
 
-    def upload_file_and_wait_until_uploaded(self, file: File) -> Self:
-        with self.wait_until_uploaded_and_refreshed([file.name]):
+    def upload_file_and_wait_until_uploaded_and_available(self, file: File) -> Self:
+        with self.wait_until_uploaded_and_available([file.name]):
             self.upload_file(file)
         return self
 
-    def upload_files_and_wait_until_uploaded(self, files: Files) -> Self:
-        with self.wait_until_uploaded_and_refreshed(files.names):
+    def upload_files_and_wait_until_uploaded_and_available(self, files: Files) -> Self:
+        with self.wait_until_uploaded_and_available(files.names):
             self.upload_files(files)
         return self
 
@@ -450,17 +450,11 @@ class FileExplorer:
             yield
 
     @contextmanager
-    def wait_until_uploaded_and_refreshed(
-        self, names: list[str], refresh_after_upload: bool | None = None
-    ) -> Generator[None]:
-        if refresh_after_upload is None:
-            refresh_after_upload = len(names) > 1
+    def wait_until_uploaded_and_available(self, names: list[str]) -> Generator[None]:
+        with self.wait_until_uploaded(names):
+            yield
 
-        with self.wait_until_refreshed():
-            with self.wait_until_uploaded(names):
-                yield
-
-        if refresh_after_upload:
+        for _ in self.wait_with_retries(lambda: all(self.locate_row(name).is_visible() for name in names)):
             expect(self.page.locator('div.ant-spin-blur')).to_have_count(0)
             self.refresh()
 
