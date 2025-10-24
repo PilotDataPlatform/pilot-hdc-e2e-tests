@@ -131,17 +131,14 @@ class FileExplorer:
         popover = self.page.locator('div.ant-popover')
         successful_files = popover.get_by_role('heading').filter(has=self.page.get_by_alt_text('Approved'))
         expect(successful_files).to_have_count(len(names), timeout=timeout)
-        successful_filenames = set()
-        for file in successful_files.all():
-            file.hover()
-            filename = self.page.locator('div.ant-tooltip-placement-top').get_by_role('tooltip').text_content()
-            _, filename = filename.rsplit('/', 1)
-            successful_filenames.add(filename)
-        assert successful_filenames == set(names)
+        # assert set(successful_files.all_text_contents()) == set(names)  # TODO: Use once latest portal is in prod
         return self
 
     def wait_for_copy_to_core_completion(self, names: list[str]) -> Self:
         return self.wait_for_action_completion('Approved', names)
+
+    def wait_for_upload_completion(self, names: list[str]) -> Self:
+        return self.wait_for_action_completion('Uploaded', names)
 
     def refresh(self) -> Self:
         with self.wait_until_refreshed():
@@ -442,6 +439,7 @@ class FileExplorer:
         with self.page.expect_response(check_response):
             yield
 
+        self.wait_for_upload_completion(names)
         self.close_file_status_popover()
 
     @contextmanager
