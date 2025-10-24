@@ -131,7 +131,14 @@ class FileExplorer:
         popover = self.page.locator('div.ant-popover')
         successful_files = popover.get_by_role('heading').filter(has=self.page.get_by_alt_text('Approved'))
         expect(successful_files).to_have_count(len(names), timeout=timeout)
-        successful_filenames = set(successful_files.all_text_contents())
+        # successful_filenames = set(successful_files.all_text_contents())  # TODO: Use once latest portal is in prod
+        successful_filenames = set()
+        for file in reversed(successful_files.all()):
+            file.locator('span > span > span').hover()
+            self.page.wait_for_timeout(500)  # wait for tooltip to appear
+            filename = self.page.locator('div.ant-tooltip-placement-top').get_by_role('tooltip').text_content()
+            _, filename = filename.rsplit('/', 1)
+            successful_filenames.add(filename)
         assert successful_filenames == set(names)
         return self
 
