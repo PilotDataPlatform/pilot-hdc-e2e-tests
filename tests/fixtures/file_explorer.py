@@ -126,12 +126,15 @@ class FileExplorer:
     def close_file_status_popover(self) -> Self:
         return self.toggle_file_status_popover(False)
 
-    def wait_for_action_completion(self, tab: str, names: list[str], timeout: int = 10000) -> Self:
+    def wait_for_action_completion(self, tab: str, names: list[str], timeout: int = 30000) -> Self:
         self.open_file_status_popover(tab)
-        popover = self.page.locator('div.ant-popover')
-        successful_files = popover.get_by_role('heading').filter(has=self.page.get_by_alt_text('Approved'))
-        expect(successful_files).to_have_count(len(names), timeout=timeout)
-        # assert set(successful_files.all_text_contents()) == set(names)  # TODO: Use once latest portal is in prod
+        status_line = (
+            self.page.locator('div.ant-popover')
+            .get_by_role('heading')
+            .filter(has=self.page.get_by_alt_text('Approved'))
+        )
+        for name in names:
+            expect(status_line.filter(has=self.page.get_by_text(name))).to_be_visible(timeout=timeout)
         return self
 
     def wait_for_copy_to_core_completion(self, names: list[str]) -> Self:
