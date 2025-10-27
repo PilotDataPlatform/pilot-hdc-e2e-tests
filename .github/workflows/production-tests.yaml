@@ -39,7 +39,7 @@ jobs:
         env:
           E2E_TESTING_ADMIN_PASSWORD: ${{ secrets.E2E_TESTING_ADMIN_PASSWORD }}
           E2E_TESTING_COLLABORATOR_PASSWORD: ${{ secrets.E2E_TESTING_COLLABORATOR_PASSWORD }}
-        run: uv run pytest tests -vvv --video=retain-on-failure --base-url=https://hdc.humanbrainproject.eu
+        run: uv run pytest tests -vvv --exitfirst --video=retain-on-failure --base-url=https://hdc.humanbrainproject.eu
 
       - name: Upload videos with failures
         uses: actions/upload-artifact@v4
