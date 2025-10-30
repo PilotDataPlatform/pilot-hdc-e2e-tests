@@ -210,7 +210,10 @@ class FileExplorer:
 
         self.page.get_by_role('button', name='ellipsis').hover()
         self.page.locator('div.ant-dropdown').get_by_role('button', name='Add to Datasets').click()
-        self.page.locator('div.file_explorer_header_bar').get_by_role('button', name='Add to Datasets').click()
+
+        with self.page.expect_response(lambda r: 'v1/datasets/?' in r.url) as response_info:
+            self.page.locator('div.file_explorer_header_bar').get_by_role('button', name='Add to Datasets').click()
+            response_info.value.finished()
 
         dialog = self.page.get_by_role('dialog')
         dialog.locator('div.ant-select').filter(

@@ -105,6 +105,7 @@ def pilotcli_binary(pilotcli_version_tag: str, tmp_path_factory: TempPathFactory
     work_dir = tmp_path_factory.mktemp(pilotcli_version_tag)
     binary_path = work_dir / 'pilotcli'
     response = requests.get(f'https://api.github.com/repos/PilotDataPlatform/cli/releases/tags/{pilotcli_version_tag}')
+    response.raise_for_status()
     binary_url = response.json()['assets'][0]['browser_download_url']
     with requests.get(binary_url, stream=True) as r:
         r.raise_for_status()
