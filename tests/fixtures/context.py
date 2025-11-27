@@ -81,7 +81,7 @@ def project_code() -> str:
 
 @pytest.fixture(scope='session')
 def pilotcli_version_tag() -> str:
-    return os.environ.get('E2E_TESTING_PILOTCLI_VERSION_TAG', '2.2.7-hdc')
+    return os.environ.get('E2E_TESTING_PILOTCLI_VERSION_TAG', 'v2.2.7')
 
 
 @pytest.fixture(scope='session')
