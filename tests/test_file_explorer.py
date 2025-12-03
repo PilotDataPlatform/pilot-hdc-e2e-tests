@@ -54,8 +54,7 @@ def test_file_upload_with_attributes(
     file.attribute = FileAttribute(name='Research', values=[('Country', country), ('Comment', comment)])
     admin_file_explorer.create_folders_and_upload_file_to(file, working_path / 'file-upload')
 
-    admin_file_explorer.locate_file(file.name).get_by_label('more').hover()
-    admin_page.get_by_role('menuitem', name='Properties').click()
+    admin_file_explorer.open_file_properties(file.name)
     admin_page.get_by_role('button', name='General').click()
     admin_page.get_by_role('button', name='File Attributes').click()
 
