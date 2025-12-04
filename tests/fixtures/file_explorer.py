@@ -115,6 +115,18 @@ class FileExplorer:
         self.page.get_by_role('tab', name=tab).click()
         return self
 
+    def open_file_properties(self, file_name: str) -> Self:
+        for _ in range(3):
+            self.locate_file(file_name).get_by_label('more').hover()
+            properties = self.page.get_by_role('menuitem', name='Properties')
+            try:
+                expect(properties).to_be_visible(timeout=1000)
+                properties.click()
+                return self
+            except AssertionError:
+                continue
+        raise PlaywrightTimeoutError(f'Could not open properties for file {file_name}.')
+
     def clear_file_status_popover_session_history(self) -> Self:
         self.open_file_status_popover()
         self.page.locator('div.ant-card').filter(has=self.page.get_by_text('Clear Session History')).get_by_role(
@@ -366,8 +378,7 @@ class FileExplorer:
         return row
 
     def get_file_tags(self, file_name: str) -> list[str]:
-        self.locate_file(file_name).get_by_label('more').hover()
-        self.page.get_by_role('menuitem', name='Properties').click()
+        self.open_file_properties(file_name)
         self.page.get_by_label('Expand').click()
         received_tags = self.page.locator('#rawTable-sidePanel span.ant-tag').all_inner_texts()
         return received_tags
