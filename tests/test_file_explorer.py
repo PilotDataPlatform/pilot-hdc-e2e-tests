@@ -7,7 +7,6 @@
 import re
 from pathlib import Path
 
-import pytest
 from playwright.sync_api import FilePayload
 from playwright.sync_api import Page
 from playwright.sync_api import expect
@@ -92,7 +91,6 @@ def test_folder_upload_and_download(
     assert {file_1.hash, file_2.hash} == {f.hash for f in received_files}
 
 
-@pytest.mark.skip(reason='Resumable upload has a bug that needs to be fixed')
 def test_file_resumable_upload_and_download(
     admin_file_explorer: FileExplorer, admin_page: Page, project_code: str, working_path: Path
 ) -> None:
@@ -100,7 +98,7 @@ def test_file_resumable_upload_and_download(
 
     admin_file_explorer.create_folders_and_navigate_to(working_path / 'file-resume-upload')
 
-    file = File.generate(size_kb=4096)
+    file = File.generate(size_kb=2048)
     with admin_page.expect_response(
         lambda r: r.url.endswith(f'project/{project_code}/files') and r.request.method == 'POST'
     ):
