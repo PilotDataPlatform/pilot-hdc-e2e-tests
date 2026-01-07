@@ -130,7 +130,7 @@ class DatasetExplorer:
 
         return self
 
-    def wait_for_action_completion(self, tab: str, names: list[str], timeout: int = 60000) -> Self:
+    def wait_for_action_completion(self, tab: str, names: list[str], timeout: int) -> Self:
         self.open_dataset_status_popover(tab)
         for name in names:
             expect(self.page.get_by_role('tabpanel')).to_contain_text(f'{name} - Succeed', timeout=timeout)
@@ -139,11 +139,11 @@ class DatasetExplorer:
             self.page.get_by_role('menuitem', name='Explorer').click()
         return self
 
-    def wait_for_import_completion(self, names: list[str]) -> Self:
-        return self.wait_for_action_completion('Import', names)
+    def wait_for_import_completion(self, names: list[str], timeout: int = 60000) -> Self:
+        return self.wait_for_action_completion('Import', names, timeout)
 
-    def wait_for_move_completion(self, names: list[str]) -> Self:
-        return self.wait_for_action_completion('Move', names)
+    def wait_for_move_completion(self, names: list[str], timeout: int = 60000) -> Self:
+        return self.wait_for_action_completion('Move', names, timeout)
 
     @contextmanager
     def wait_until_refreshed(self) -> Generator[None]:
