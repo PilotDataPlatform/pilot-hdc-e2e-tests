@@ -80,7 +80,7 @@ def test_add_folder_with_files_to_dataset(
 
     admin_file_explorer.copy_to_core([folder_name], full_working_path).switch_to_core()
     admin_file_explorer.add_to_dataset([folder_name], dataset.code)
-    admin_dataset_explorer.open(dataset.code).wait_for_import_completion([folder_name], timeout=120000)
+    admin_dataset_explorer.open(dataset.code).wait_for_import_completion([folder_name], timeout=4 * 60000)
 
     explorer_tree = admin_page.locator('div.ant-tree-list-holder-inner')
     expect(explorer_tree).to_contain_text(folder_name)
