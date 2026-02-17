@@ -1,0 +1,54 @@
+name: HDC OVH Development E2E Tests
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  tests:
+    timeout-minutes: 30
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.8.13"
+
+      - name: Install the project
+        run: uv sync --locked
+
+      - name: Ensure browsers are installed
+        run: uv run playwright install --with-deps chromium-headless-shell
+
+      - name: Run tests
+        env:
+          E2E_TESTING_ADMIN_PASSWORD: ${{ secrets.E2E_TESTING_ADMIN_PASSWORD }}
+          E2E_TESTING_COLLABORATOR_PASSWORD: ${{ secrets.E2E_TESTING_COLLABORATOR_PASSWORD }}
+          E2E_TESTING_PILOTCLI_VERSION_TAG: ${{ vars.E2E_TESTING_PILOTCLI_VERSION_TAG }}
+        run: uv run pytest tests -vvv --durations=5 --video=retain-on-failure --base-url=https://dev.hdc.ebrains.eu
+
+      - name: Upload videos with failures
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: videos
+          path: test-results/
+          if-no-files-found: ignore
+
+      - name: Send Slack notification to kubewatch-hdc-dev channel
+        if: ${{ failure() && github.event_name == 'schedule' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          wget --quiet --method=POST --header="Content-Type: application/json" \
+          --body-data='{"text":"OVH: Development E2E tests failed. Check logs for details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+          "$SLACK_WEBHOOK_URL"
