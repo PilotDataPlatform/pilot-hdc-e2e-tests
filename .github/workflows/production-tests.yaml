@@ -1,9 +1,15 @@
-name: HDC OVH Development E2E Tests
+name: HDC Production E2E Tests
 
 on:
   schedule:
-    - cron: "0 6 * * *"
+    - cron: "0 */8 * * *"
   workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   tests:
@@ -11,17 +17,17 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v8
         with:
-          version: "0.8.13"
+          version: "0.11.6"
 
       - name: Install the project
         run: uv sync --locked
@@ -34,7 +40,7 @@ jobs:
           E2E_TESTING_ADMIN_PASSWORD: ${{ secrets.E2E_TESTING_ADMIN_PASSWORD }}
           E2E_TESTING_COLLABORATOR_PASSWORD: ${{ secrets.E2E_TESTING_COLLABORATOR_PASSWORD }}
           E2E_TESTING_PILOTCLI_VERSION_TAG: ${{ vars.E2E_TESTING_PILOTCLI_VERSION_TAG }}
-        run: uv run pytest tests -vvv --durations=5 --video=retain-on-failure --base-url=https://dev.hdc.ebrains.eu
+        run: uv run pytest tests -vvv --durations=5 --exitfirst --video=retain-on-failure --base-url=https://hdc.ebrains.eu
 
       - name: Upload videos with failures
         uses: actions/upload-artifact@v4
@@ -50,5 +56,5 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           wget --quiet --method=POST --header="Content-Type: application/json" \
-          --body-data='{"text":"OVH: Development E2E tests failed. Check logs for details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+          --body-data='{"text":"Production E2E tests failed. Check logs for details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
           "$SLACK_WEBHOOK_URL"
