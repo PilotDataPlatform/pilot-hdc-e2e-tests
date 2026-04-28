@@ -130,7 +130,7 @@ def test_file_with_tags_copy_to_core_zone(admin_file_explorer: FileExplorer, wor
     file = File.generate(tags_number=3)
     admin_file_explorer.upload_file_and_wait_until_uploaded_and_available(file)
 
-    admin_file_explorer.copy_to_core([file.name], full_working_path).switch_to_core()
+    admin_file_explorer.copy_to_core_and_wait_for_completion([file.name], full_working_path).switch_to_core()
 
     received_tags = admin_file_explorer.get_file_tags(file.name)
 

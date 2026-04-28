@@ -218,6 +218,11 @@ class FileExplorer:
 
         return self
 
+    def copy_to_core_and_wait_for_completion(self, names: list[str], core_folder_path: Path) -> Self:
+        self.copy_to_core(names, core_folder_path)
+        self.wait_for_copy_to_core_completion(names)
+        return self
+
     def add_to_dataset(self, names: list[str], dataset_code: str) -> Self:
         for name in names:
             self.locate_row(name).get_by_role('checkbox').check()
@@ -287,7 +292,7 @@ class FileExplorer:
     ) -> Self:
         self.create_folders_in_greenroom_and_core(folder_path)
         self.upload_files_and_wait_until_uploaded_and_available(files)
-        self.copy_to_core(files.names, folder_path).switch_to_core()
+        self.copy_to_core_and_wait_for_completion(files.names, folder_path).switch_to_core()
         self.add_to_dataset(files.names, dataset_code)
         return self
 
