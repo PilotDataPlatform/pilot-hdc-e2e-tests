@@ -12,6 +12,7 @@ import zipfile
 from collections.abc import Callable
 from collections.abc import Generator
 from contextlib import contextmanager
+from http import HTTPStatus
 from pathlib import Path
 from typing import IO
 from typing import Annotated
@@ -204,7 +205,8 @@ class FileExplorer:
         dialog = self.page.get_by_role('dialog')
         dialog.get_by_role('button', name='Select Destination').click()
 
-        dialog.locator('div.ant-tree-treenode').filter(has=self.page.get_by_role('img', name='user')).click()
+        with self.wait_until_file_list_loaded():
+            dialog.locator('div.ant-tree-treenode').filter(has=self.page.get_by_role('img', name='user')).click()
         self.select_path_in_dialog_tree(dialog, core_folder_path)
         dialog.get_by_role('button', name='Select').click()
 
@@ -465,6 +467,11 @@ class FileExplorer:
             yield
 
     @contextmanager
+    def wait_until_file_list_loaded(self) -> Generator[None]:
+        with self.page.expect_response(lambda r: 'v1/files/meta?' in r.url and r.status == HTTPStatus.OK):
+            yield
+
+    @contextmanager
     def wait_until_uploaded_and_available(self, names: list[str]) -> Generator[None]:
         with self.wait_until_uploaded(names):
             yield
@@ -488,7 +495,8 @@ class FileExplorer:
                     folders[folder_name] = folder
 
             try:
-                folders[path_parts[0]].click()
+                with self.wait_until_file_list_loaded():
+                    folders[path_parts[0]].click()
                 path_parts.pop(0)
                 start_level += 1
             except KeyError:

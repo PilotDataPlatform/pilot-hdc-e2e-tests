@@ -7,6 +7,7 @@
 import os
 from collections.abc import Generator
 from contextlib import contextmanager
+from http import HTTPStatus
 from typing import Annotated
 from typing import Self
 
@@ -86,7 +87,9 @@ class DatasetExplorer:
             authors_input.press('Enter')
             authors_input.press('Escape')
 
-        with self.page.expect_response(lambda r: r.url.endswith('v1/datasets/') and r.request.method == 'POST'):
+        with self.page.expect_response(
+            lambda r: r.url.endswith('v1/datasets/') and r.request.method == 'POST' and r.status == HTTPStatus.OK
+        ):
             self.page.get_by_role('button', name='Create').click()
 
         return self

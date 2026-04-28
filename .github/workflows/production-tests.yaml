@@ -43,7 +43,7 @@ jobs:
         run: uv run pytest tests -vvv --durations=5 --exitfirst --video=retain-on-failure --base-url=https://hdc.ebrains.eu
 
       - name: Upload videos with failures
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
           name: videos
