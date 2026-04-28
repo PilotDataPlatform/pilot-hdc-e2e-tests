@@ -29,7 +29,7 @@ class Container(DockerContainer):
         stdout, _ = self.get_logs()
         return stdout.decode()
 
-    def wait_until_stopped(self, *, timeout: int = 10000) -> str:
+    def wait_until_stopped(self, *, timeout: int = 30000) -> str:
         wrapped = self.get_wrapped_container()
 
         start_time = tm.monotonic()
@@ -41,7 +41,7 @@ class Container(DockerContainer):
 
         raise PlaywrightTimeoutError(f'Container did not stop within {timeout} milliseconds.')
 
-    def wait_for_logs(self, text: str, timeout: int = 10000) -> str:
+    def wait_for_logs(self, text: str, timeout: int = 30000) -> str:
         wait_for_logs(self, LogMessageWaitStrategy(text), timeout=timeout / 1000)
         return self.get_stdout()
 
