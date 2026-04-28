@@ -12,6 +12,7 @@ import zipfile
 from collections.abc import Callable
 from collections.abc import Generator
 from contextlib import contextmanager
+from http import HTTPStatus
 from pathlib import Path
 from typing import IO
 from typing import Annotated
@@ -204,7 +205,8 @@ class FileExplorer:
         dialog = self.page.get_by_role('dialog')
         dialog.get_by_role('button', name='Select Destination').click()
 
-        dialog.locator('div.ant-tree-treenode').filter(has=self.page.get_by_role('img', name='user')).click()
+        with self.wait_until_file_list_loaded():
+            dialog.locator('div.ant-tree-treenode').filter(has=self.page.get_by_role('img', name='user')).click()
         self.select_path_in_dialog_tree(dialog, core_folder_path)
         dialog.get_by_role('button', name='Select').click()
 
@@ -214,6 +216,11 @@ class FileExplorer:
         dialog.get_by_role('button', name='Confirm').click()
         dialog.get_by_text('Close').click()
 
+        return self
+
+    def copy_to_core_and_wait_for_completion(self, names: list[str], core_folder_path: Path) -> Self:
+        self.copy_to_core(names, core_folder_path)
+        self.wait_for_copy_to_core_completion(names)
         return self
 
     def add_to_dataset(self, names: list[str], dataset_code: str) -> Self:
@@ -242,8 +249,10 @@ class FileExplorer:
         active_tab = self.page.locator('div.ant-tabs-tabpane-active')
         if active_tab.locator('li.ant-pagination-item').count() > 1:
             active_tab.locator('li.ant-pagination-options div.ant-select').click()
+            active_tab.locator('div.ant-select-dropdown').wait_for(state='visible')
             with self.wait_until_refreshed():
-                active_tab.locator('div.ant-select-dropdown div.ant-select-item').last.click()
+                self.page.keyboard.press('ArrowUp')
+                self.page.keyboard.press('Enter')
         return self
 
     def navigate_to(self, folder_path: Path) -> Self:
@@ -285,7 +294,7 @@ class FileExplorer:
     ) -> Self:
         self.create_folders_in_greenroom_and_core(folder_path)
         self.upload_files_and_wait_until_uploaded_and_available(files)
-        self.copy_to_core(files.names, folder_path).switch_to_core()
+        self.copy_to_core_and_wait_for_completion(files.names, folder_path).switch_to_core()
         self.add_to_dataset(files.names, dataset_code)
         return self
 
@@ -465,6 +474,11 @@ class FileExplorer:
             yield
 
     @contextmanager
+    def wait_until_file_list_loaded(self) -> Generator[None]:
+        with self.page.expect_response(lambda r: 'v1/files/meta?' in r.url and r.status == HTTPStatus.OK):
+            yield
+
+    @contextmanager
     def wait_until_uploaded_and_available(self, names: list[str]) -> Generator[None]:
         with self.wait_until_uploaded(names):
             yield
@@ -488,7 +502,8 @@ class FileExplorer:
                     folders[folder_name] = folder
 
             try:
-                folders[path_parts[0]].click()
+                with self.wait_until_file_list_loaded():
+                    folders[path_parts[0]].click()
                 path_parts.pop(0)
                 start_level += 1
             except KeyError:

@@ -78,7 +78,7 @@ def test_add_folder_with_files_to_dataset(
     with admin_file_explorer.wait_until_uploaded([file_1.name, file_2.name]):
         admin_file_explorer.upload_folder(folder_path)
 
-    admin_file_explorer.copy_to_core([folder_name], full_working_path).switch_to_core()
+    admin_file_explorer.copy_to_core_and_wait_for_completion([folder_name], full_working_path).switch_to_core()
     admin_file_explorer.add_to_dataset([folder_name], dataset.code)
     admin_dataset_explorer.open(dataset.code).wait_for_import_completion([folder_name], timeout=4 * 60000)
 
