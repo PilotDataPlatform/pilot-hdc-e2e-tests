@@ -248,9 +248,11 @@ class FileExplorer:
     def maximize_page_size(self) -> Self:
         active_tab = self.page.locator('div.ant-tabs-tabpane-active')
         if active_tab.locator('li.ant-pagination-item').count() > 1:
-            active_tab.locator('li.ant-pagination-options div.ant-select').click()
+            pagination = active_tab.locator('li.ant-pagination-options div.ant-select')
+            pagination.click()
             with self.wait_until_refreshed():
-                active_tab.locator('div.ant-select-dropdown div.ant-select-item').last.click()
+                pagination.press('ArrowUp')
+                pagination.press('Enter')
         return self
 
     def navigate_to(self, folder_path: Path) -> Self:
