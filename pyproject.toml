@@ -7,7 +7,7 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
     "mimesis>=18.0.0",
     "pydantic>=2.12.3",
-    "pytest>=8.4.2",
+    "pytest>=9.0.3",
     "pytest-playwright>=0.7.1",
     "pytest-random-order>=1.2.0",
     "requests>=2.33.1",
