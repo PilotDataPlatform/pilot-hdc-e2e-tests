@@ -1,8 +1,6 @@
 name: HDC Development E2E Tests
 
 on:
-  schedule:
-    - cron: "0 6 * * *"
   workflow_dispatch:
 
 jobs:
