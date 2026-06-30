@@ -1,8 +1,6 @@
 name: HDC Production E2E Tests
 
 on:
-  schedule:
-    - cron: "0 */8 * * *"
   workflow_dispatch:
   push:
     branches:
